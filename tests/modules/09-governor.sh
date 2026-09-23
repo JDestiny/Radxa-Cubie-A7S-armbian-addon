@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # 模块 09: CPU governor 调频   (由 stress.sh source)
 
 mod_governor() {

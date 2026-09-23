@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: MIT
 /* vk_stress.c — PowerVR Vulkan compute 压测 (headless)
  * 加载 /tmp/cs.spv (blur 计算 shader), 1920x1080 循环 dispatch
  * 编译: gcc -O2 -o vk_stress vk_stress.c -lvulkan

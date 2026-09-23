@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # 模块 07: 混合并发满载   (由 stress.sh source)
 
 mod_mixed() {

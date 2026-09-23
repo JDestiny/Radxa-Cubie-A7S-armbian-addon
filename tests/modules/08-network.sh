@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # 模块 08: 网络 (iperf3)   (由 stress.sh source)
 
 mod_network() {

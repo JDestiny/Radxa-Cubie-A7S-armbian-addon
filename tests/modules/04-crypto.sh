@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # 模块 04: 加密性能 (openssl speed)   (由 stress.sh source)
 
 mod_crypto() {

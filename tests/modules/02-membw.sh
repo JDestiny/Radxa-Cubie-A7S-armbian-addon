@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # 模块 02: 内存带宽 (mbw)   (由 stress.sh source)
 
 mod_membw() {

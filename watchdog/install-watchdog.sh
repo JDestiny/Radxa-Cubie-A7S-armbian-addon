@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # 硬件看门狗（systemd 负责喂狗）
 #
 # 背景（2026-09-18）：

@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # 模块 10: 容器负载 (rootless docker)   (由 stress.sh source)
 
 mod_container() {

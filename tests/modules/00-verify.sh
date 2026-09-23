@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # ============================================================
 # 模块 00: 全硬件验证 — 原 test-cubie-a7s-v8.sh (0-33 章, 85+ 项) 已内化并入本文件
 #   * 覆盖: SoC/CPU/内存/PMIC/存储(eMMC+TF)/以太网/WiFi/蓝牙/USB/USB-C/PCIe/VE/NPU/G2D/

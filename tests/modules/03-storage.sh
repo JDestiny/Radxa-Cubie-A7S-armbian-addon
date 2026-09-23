@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # 模块 03: 存储随机 IO (fio)   (由 stress.sh source)
 
 mod_storage() {

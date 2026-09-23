@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # 模块 01: CPU 满载 (stress-ng)   (由 stress.sh source)
 
 mod_cpu() {

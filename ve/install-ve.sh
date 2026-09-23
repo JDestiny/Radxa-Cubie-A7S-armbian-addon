@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # ve/install-ve.sh — Cubie A7S（全志 A733 / sun60iw2p1）VE 视频编解码用户态栈安装
 #
 # 安装内容：

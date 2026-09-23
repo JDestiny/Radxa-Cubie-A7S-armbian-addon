@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # 模块 06: NPU (golden + resnet50)   (由 stress.sh source)
 
 mod_npu() {

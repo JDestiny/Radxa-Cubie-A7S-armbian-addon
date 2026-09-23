@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # Cubie A7S GPU 用户态安装脚本：用户态库 / 固件 / ICD / 运行期依赖 + 三项渲染自检
 #
 # 用法:

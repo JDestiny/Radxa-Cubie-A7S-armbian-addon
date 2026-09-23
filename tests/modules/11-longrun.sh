@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # 模块 11: 长时稳定性 (可选)   (由 stress.sh source)
 
 mod_longrun() {

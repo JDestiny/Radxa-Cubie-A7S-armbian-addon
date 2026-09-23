@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # Radxa 相机（MIPI-CSI）overlay：安装 / 启用 / 停用 / 状态
 #
 # 背景（2026-09-18）：

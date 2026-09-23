@@ -41,5 +41,8 @@ cd .. && sudo ./install-gpu-driver-gpuacct.sh
 ## 说明
 
 - 补丁只改内核驱动（GPL v2），不改用户态；
+- **许可**：本补丁按 **GPL-2.0-only** 发布（全文见 [`../../LICENSE-GPL-2.0-only`](../../LICENSE-GPL-2.0-only)）。
+  它修改的是 IMG 以 GPL v2 发布的内核驱动源码，属衍生作品，因此必须同为 GPL-2.0；
+  本仓库其余部分（脚本、文档、用户态程序）为 MIT，见 [`../../LICENSE`](../../LICENSE)；
 - 不想要记账功能就不要打这个补丁，直接 `sudo ./install-gpu-driver-stock.sh` 安装原版驱动；
 - 两个变体安装脚本互相排斥（脚本会从 DKMS 树里摘掉另一个），同一时间只装一个。

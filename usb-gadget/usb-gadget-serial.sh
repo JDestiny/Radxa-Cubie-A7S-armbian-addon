@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # USB gadget：把 OTG 口变成 USB 串口设备（PC 侧出现 /dev/ttyACM0）
 #
 # 背景（2026-09-18）：

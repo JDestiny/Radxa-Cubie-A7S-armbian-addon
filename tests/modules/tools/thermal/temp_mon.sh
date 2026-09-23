@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # 温度监控: 打印所有 thermal zone
 # 用法: ./temp_mon.sh [间隔秒=10] [次数=6]
 INT=${1:-10}; N=${2:-6}

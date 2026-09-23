@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # DSU/L3 调频：受控启用（黑名单 → 手动加载 → 判据 → 提升）
 #
 # 背景（2026-09-18）：

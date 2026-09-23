@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # NPU 压测 (多模型): golden 检测 + resnet50 分类连续推理
 # 用法: sudo ./npu_stress.sh [resnet50次数=200]
 # 依赖: vpm_run (/usr/local/bin), 模型在 B-安装后配置/npu/

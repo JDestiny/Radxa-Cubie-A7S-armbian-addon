@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # 相机 ISP / cedarc 用户态栈安装（B 类，camera/isp/）
 #
 # 装什么（两个官方 deb，包内路径已核对，不猜）：

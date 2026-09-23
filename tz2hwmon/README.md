@@ -168,5 +168,8 @@ sudo depmod -a
 | 文件 | 说明 |
 |---|---|
 | `install-tz2hwmon.sh` | 安装 / 卸载 / 状态脚本（编译、安装、自启、校验一体） |
-| `tz2hwmon.c` | 模块源码（GPL-2.0，版本 2.0） |
+| `tz2hwmon.c` | 模块源码（GPL-2.0-only；模块自身版本 2.0） |
 | `tz2hwmon.ko` | 预编译模块，对应内核 `6.6.98-vendor-sun60iw2` |
+
+> 本目录是**内核模块**，按 **GPL-2.0-only** 发布（全文见 [`../LICENSE-GPL-2.0-only`](../LICENSE-GPL-2.0-only)）——
+> 内核为 GPL-2.0-only，模块必须同授权；本仓库其余部分（脚本、文档、用户态程序）为 MIT，见 [`../LICENSE`](../LICENSE)。

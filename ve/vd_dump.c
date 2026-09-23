@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: MIT
 /* vd_dump.c — VE 硬解完整管线验证: 解码 + dma_buf 读取 + YUV 落盘
  *
  * 验证: VideoPicture.nBufFd (dma_buf) → DMA_BUF_IOCTL_SYNC → mmap

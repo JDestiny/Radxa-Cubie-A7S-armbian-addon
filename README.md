@@ -81,16 +81,22 @@ radxa-cubie-a7s-armbian-addon/
 
 ## 六、来源与许可
 
-- 本仓库内的**脚本、源码与文档**：**GPL-2.0-only**（SPDX 标识，完整文本见 [`LICENSE`](LICENSE)，
-  即 GPL 第 2 版，不含"或更高版本"）。选它的原因：仓库里有**内核模块**（`tz2hwmon/`）和
-  **针对 GPL v2 内核驱动的补丁**（`gpu/patches/gpuacct.patch`），与 Linux 内核、Armbian
-  及厂商驱动源码的授权保持一致，互相引用时不会产生授权冲突；
-- 仓库中**厂商提供的二进制与库**（如 `ve/usr-lib/`、`ve/include/`、`camera/isp/pkgs/*.deb`）
-  来自板卡厂商官方镜像或其官方发布物，版权归各自权利人，随附只为便于安装，**不适用上述授权**，
-  详见 [`THIRD-PARTY.md`](THIRD-PARTY.md)；
-- 本仓库**自行编译**的产物（`tz2hwmon/tz2hwmon.ko`、`gpu/test/` 下的自检程序）与它们的源码一样
-  归本项目所有，同为 **GPL-2.0-only**；源码文件头部带 `SPDX-License-Identifier: GPL-2.0-only` 标识；
-- 上游 Armbian 项目与本仓库的关系：本仓库不是 Armbian 官方项目，组件由社区维护。
+本仓库**按内容类型分两种授权**，每个源码与脚本文件头部都带 `SPDX-License-Identifier` 标识：
+
+| 范围 | 授权 | 为什么这么分 |
+|---|---|---|
+| 安装脚本、文档，以及**用户态程序**（`ve/`、`gpu/test/`、`tests/`） | **MIT**<br>（全文见 [`LICENSE`](LICENSE)） | 这些程序要**动态链接厂商闭源库**（`libvdecoder.so`、`libEGL.so.1`、`libOpenCL.so.1` 等）。GPL-2.0 第 7 节不允许分发"GPL 程序 + 与之不兼容的专有库"这种组合，而本仓库恰恰会发布这些编译好的程序；MIT 没有这个限制。MIT 同时也能被 GPL-2.0 的项目（如 Armbian）直接吸收，两个方向都不会卡住 |
+| **内核模块** `tz2hwmon/` 与**内核驱动补丁** `gpu/patches/` | **GPL-2.0-only**<br>（全文见 [`LICENSE-GPL-2.0-only`](LICENSE-GPL-2.0-only)） | Linux 内核是 GPL-2.0-only；该补丁修改的是 IMG 以 GPL v2 发布的内核驱动，属衍生作品，必须同为 GPL-2.0 |
+
+另外两类内容不适用上述授权：
+
+- 仓库中**厂商提供的二进制与库**（`ve/usr-lib/`、`ve/include/`、`camera/isp/pkgs/*.deb`）
+  来自板卡厂商官方镜像或其官方发布物，版权归各自权利人，随附只为便于安装，详见
+  [`THIRD-PARTY.md`](THIRD-PARTY.md)；
+- 本仓库**自行编译**的产物与其源码同授权：`tz2hwmon/tz2hwmon.ko` 为 GPL-2.0-only，
+  `gpu/test/`、`ve/`、`tests/` 下的可执行文件为 MIT。
+
+上游 Armbian 项目与本仓库的关系：本仓库不是 Armbian 官方项目，组件由社区维护。
 
 ## 七、说明
 

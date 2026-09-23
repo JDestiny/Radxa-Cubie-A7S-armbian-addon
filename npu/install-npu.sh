@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # Cubie A7S NPU 安装脚本：检查驱动 → 缺失则安装 → golden demo 验证
 # 用法: sudo ./install-npu.sh
 set -e

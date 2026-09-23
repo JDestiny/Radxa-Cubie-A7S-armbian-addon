@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # 模块 05: GPU 三栈 (GLES/OpenCL/Vulkan)   (由 stress.sh source)
 
 mod_gpu() {

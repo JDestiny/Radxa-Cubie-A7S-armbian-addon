@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # VE 硬件 H.264 编码冒烟测试（无需相机）
 #
 # 背景：

@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # ============================================================
 # Cubie A7S — tz2hwmon 安装脚本（装完系统后执行）
 #   thermal_zone → hwmon 只读桥接: 让 sensors / btop / htop 读到温度

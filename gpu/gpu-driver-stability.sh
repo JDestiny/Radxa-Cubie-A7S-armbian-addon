@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 # ============================================================
 # gpu-driver-stability.sh — GPU 驱动动态负载稳定性压测 (默认 2h)
 #
