@@ -97,3 +97,38 @@ radxa-cubie-a7s-armbian-addon/
 - 仓库**只提供安装方法与说明**，不含任何测试报告或运行日志；
 - 组件均已在实机长期使用，但**换内核、升级系统后请重新执行对应安装脚本**（尤其是 DKMS 类与内核模块类）；
 - 遇到问题请附上：`uname -r`、组件目录下的脚本输出、以及 `dmesg | tail -50`。
+
+## 八、致谢
+
+这块板子能从"只有内核驱动"变成各项功能可用，靠的是下面这些项目与厂商发布物。列出出处既为致谢，
+也便于核对本仓库随附内容的来源。
+
+### 直接使用的开源项目
+
+| 项目 | 本仓库用到了什么 | 许可 |
+|---|---|---|
+| [armbian/build](https://github.com/armbian/build) | 组件所运行的 Armbian 系统由它构建；板级主线适配也提交到这里 | GPL-2.0 |
+| [orangepi-xunlong/linux-orangepi](https://github.com/orangepi-xunlong/linux-orangepi) | 本板 vendor 内核源码（`6.6.98-vendor-sun60iw2`）：`tz2hwmon` 与 GPU DKMS 驱动都针对它编译 | 内核系 GPL-2.0（仓库未声明） |
+| [radxa/allwinner-debian](https://github.com/radxa/allwinner-debian) | `camera/isp/pkgs/` 里两个 deb（ISP 与 cedarc 用户态）的来源 | 未声明许可 |
+| [ZIFENG278/ai-sdk](https://github.com/ZIFENG278/ai-sdk) | NPU（VIPLite）中间件、`vpm_run` 与模型样例；Radxa 官方 NPU 文档指定的就是它 | 未声明许可 |
+| [radxa-docs/docs](https://github.com/radxa-docs/docs) | Radxa 官方文档的源仓库（docs.radxa.com）；镜像下载页与 NPU 页是本仓库取件的依据 | 内容 CC BY 4.0 |
+
+### 组件所运行的引导链（不属于本仓库）
+
+| 项目 | 用到了什么 | 许可 |
+|---|---|---|
+| [orangepi-xunlong/u-boot-orangepi](https://github.com/orangepi-xunlong/u-boot-orangepi) | sun60iw2p1 的 U-Boot（`sun60iw2p1_t736_defconfig`） | U-Boot 系（仓库未声明） |
+| [orangepi-xunlong/orangepi-build](https://github.com/orangepi-xunlong/orangepi-build) | 提供 ATF/SCP 预编译件与 `pack-uboot` 打包工具 | GPL-2.0 |
+| Radxa 官方 Cubie A7S 镜像（rsdk-r6） | GPU 内核驱动源码、GPU 用户态库与固件、VE 库与头文件 | 厂商闭源，见 [`THIRD-PARTY.md`](THIRD-PARTY.md) |
+
+### 测试脚本调用的第三方工具
+
+由发行版包管理器安装，不随本仓库分发：[stress-ng](https://github.com/ColinIanKing/stress-ng)、
+[fio](https://github.com/axboe/fio)、[iperf3](https://github.com/esnet/iperf)、
+[mbw](https://github.com/raas/mbw)、[OpenSSL](https://github.com/openssl/openssl)、
+[FFmpeg](https://github.com/FFmpeg/FFmpeg)、[lm-sensors](https://github.com/lm-sensors/lm-sensors)、
+[Vulkan-Tools](https://github.com/KhronosGroup/Vulkan-Tools)，以及系统自带的 `v4l-utils`、`dkms`、
+`dtc`、`python3`。
+
+> 上面标注"未声明许可"的仓库，我们没有收录其内容，只在文档中给出获取方式；
+> 随附的厂商二进制一律以其原始发布物的条款为准。
