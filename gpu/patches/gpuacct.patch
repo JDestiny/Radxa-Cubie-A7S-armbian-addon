@@ -1,0 +1,495 @@
+--- img-bxm-dkms-src/img-bxm/linux/rogue_km/services/server/devices/rgxcompute.c	2026-03-19 19:26:40.000000000 +0800
++++ img-bxm-dkms-src-gpuacct/img-bxm/linux/rogue_km/services/server/devices/rgxcompute.c	2026-09-12 21:41:13.228439524 +0800
+@@ -42,6 +42,8 @@
+ */ /**************************************************************************/
+ 
+ #include "img_defs.h"
++
++extern void PVRGpuAcctKick(void);	/* pvr_gpuacct lab */
+ #include "srvkm.h"
+ #include "pdump_km.h"
+ #include "pvr_debug.h"
+@@ -430,6 +432,7 @@
+ 								IMG_UINT64					ui64DeadlineInus,
+ 								IMG_PUINT32					pui32IntJobRef)
+ {
++	PVRGpuAcctKick();	/* pvr_gpuacct lab: 按进程记 GPU 提交 */
+ 	RGXFWIF_KCCB_CMD		sCmpKCCBCmd;
+ 	RGX_CCB_CMD_HELPER_DATA	asCmdHelperData[1];
+ 	PVRSRV_ERROR			eError;
+--- img-bxm-dkms-src/img-bxm/linux/rogue_km/services/server/devices/rogue/rgxinit.c	2026-03-19 19:26:40.000000000 +0800
++++ img-bxm-dkms-src-gpuacct/img-bxm/linux/rogue_km/services/server/devices/rogue/rgxinit.c	2026-09-14 23:47:33.659110483 +0800
+@@ -43,6 +43,10 @@
+ 
+ #if defined(__linux__)
+ #include <linux/stddef.h>
++#include <linux/workqueue.h>
++#include <linux/sched.h>
++#include <linux/list.h>
++#include <linux/mutex.h>
+ #else
+ #include <stddef.h>
+ #endif
+@@ -677,6 +681,350 @@
+ #define MAX_DIFF_TIME_NS (300000ULL)
+ #define MAX_DIFF_DM_TIME_NS (MAX_DIFF_TIME_NS >> RGXFWIF_DM_OS_TIMESTAMP_SHIFT)
+ 
++/* ============================================================================
++ * pvr_gpuacct (lab 实验): 按进程累计 GPU 忙时 → env/linux/pvr_drm.c 的 fdinfo
++ * 以 htop 认的 "drm-engine-pvr: <ns> ns" 输出 (GPU 表头 / 进程 GPU% 数据源)。
++ *
++ *   数据源: SORgxGpuUtilStatsRegister() 注册独立利用率用户, 每 250ms 调
++ *           pfnGetGpuUtilStats() 取"自上次调用以来"的 GPU active 时间 (µs → ns)。
++ *   归属:   按本周期内各进程的 kick 次数分摊 —— kick 发生在客户端 ioctl 上下文,
++ *           用 task_tgid_nr(current) 归属最直接; 单客户端压测 = 100% 归属。
++ *   导出:   PVRGpuAcctKick / PVRGpuAcctInit / PVRGpuAcctDeinit / PVRGpuAcctGetBusyNs
++ * ========================================================================== */
++/* 原型 (满足 -Wmissing-prototypes) */
++void PVRGpuAcctKick(void);
++void PVRGpuAcctInit(PVRSRV_DEVICE_NODE *psDeviceNode);
++void PVRGpuAcctDeinit(void);
++unsigned long long PVRGpuAcctGetBusyNs(int pid);
++extern void PVRGpuAcctWarn(const char *msg);
++
++/* 采样节奏: 实测 4Hz 读取驱动的利用率统计会在 ~4.5 分钟后把统计打死(卡在 0%),
++ * 1Hz + "只在有 GPU 提交时采样" + 连续取零退避 → 把读取压力降到安全范围。 */
++/* v4 (2026-09-13): 实测结论 ——
++ *   4Hz 采样: 约 4.5 min 后把统计打挂;
++ *   稀疏退避(2s→32s): 更糟! 我们自己的 util-user 状态需要 ~1s 的持续轮询才能
++ *     跟上固件计数器的环形缓冲, 一旦拉到 32s 就再也解析不出数据 → 永久冻结
++ *     (v3 长测: 第 6 分钟起 1h54m 全是 0)。
++ * 故 v4 = **固定 1s 稳定轮询** + 冻结时**重置自己的 util-user 状态**(unregister/register)
++ *   + 空闲自停(无 kick 时完全不读) + 状态转换告警。 */
++#define PVR_GPUACCT_TICK_MS	1000	/* 固定 1s (安全区) */
++#define PVR_GPUACCT_IDLE_TICKS	5	/* 连续 5 次无 kick → 停止采样 */
++#define PVR_GPUACCT_ZERO_LIMIT	5	/* 连续 5 次"有 kick 却为 0" → 重置 util-user 状态 */
++#define PVR_GPUACCT_MAX_ENTRIES	4096	/* v6: 记账条目数上限 (兜底; 正常远小于此) */
++
++/* v6 (2026-09-14) 三项收尾:
++ *   R2 热路径无锁化: kick 常见路径 = RCU 读遍历 + atomic64 自增, **不取任何锁**;
++ *                    只有"新 pid"才走慢路径 (spinlock + kzalloc(GFP_ATOMIC) + 双重检查);
++ *                    "采样循环是否在跑"改用 atomic, 避免每次 kick 抢锁。
++ *   R4 条目回收:      tick 里回收"进程已消失"的条目 (list_del_rcu + kfree_rcu),
++ *                    并在条目数超上限时淘汰最久未活动的一条 → 长跑不再攒内存,
++ *                    PID 复用也不会继承旧累计值。
++ *   (R5 fdinfo 去重在 pvr_drm.c: 不再自己打 drm-client-id/drm-driver,
++ *    engine 行移到内核 drm_show_fdinfo() 之后 —— 文件里 client-id 仍排在 engine 之前,
++ *    htop 契约不变, 且不再出现重复字段。) */
++struct pvr_gpuacct {
++	struct list_head	node;
++	struct rcu_head		rcu;
++	pid_t			pid;
++	atomic64_t		kicks;		/* 本周期 kick 次数 (热路径只动这里) */
++	IMG_UINT64		ui64BusyNs;	/* 累计忙时 (只由 tick 写; 读侧持 rcu_read_lock) */
++	unsigned long		last_kick;	/* jiffies; 供淘汰策略参考 (写侧只写自己的) */
++	IMG_BOOL		reap;		/* 回收标记 (只在回收流程里用) */
++};
++
++static LIST_HEAD(g_pvr_gpuacct_list);
++static DEFINE_SPINLOCK(g_pvr_gpuacct_lock);	/* 仅插入/摘除用 (慢路径) */
++static atomic64_t g_pvr_gpuacct_total_kicks = ATOMIC64_INIT(0);
++static atomic_t g_pvr_gpuacct_entries = ATOMIC_INIT(0);
++static IMG_HANDLE g_pvr_gpuacct_util_user;
++static PVRSRV_DEVICE_NODE *g_pvr_gpuacct_devnode;
++static struct delayed_work g_pvr_gpuacct_work;
++static IMG_BOOL g_pvr_gpuacct_started;
++static atomic_t g_pvr_gpuacct_running = ATOMIC_INIT(0);	/* 采样循环是否在跑 */
++static IMG_UINT32 g_pvr_gpuacct_idle, g_pvr_gpuacct_zeros;
++
++
++static void pvr_gpuacct_start_sampling(void)
++{
++	if (!atomic_read(&g_pvr_gpuacct_running)) {
++		atomic_set(&g_pvr_gpuacct_running, 1);
++		/* 对已排队的 work 重复 schedule 是安全的 (只会前移触发时间, 不会叠加执行) */
++		schedule_delayed_work(&g_pvr_gpuacct_work, 0);
++	}
++}
++
++void PVRGpuAcctKick(void)
++{
++	struct pvr_gpuacct *e;
++
++	rcu_read_lock();
++	if (!g_pvr_gpuacct_started) {		/* 标志在 RCU 读侧检查 (卸载安全) */
++		rcu_read_unlock();
++		return;
++	}
++	/* ---- 快路径: 无锁 (RCU 遍历 + 原子自增) ---- */
++	list_for_each_entry_rcu(e, &g_pvr_gpuacct_list, node) {
++		if (e->pid == task_tgid_nr(current)) {
++			atomic64_inc(&e->kicks);
++			e->last_kick = jiffies;
++			rcu_read_unlock();
++			atomic64_inc(&g_pvr_gpuacct_total_kicks);
++			pvr_gpuacct_start_sampling();
++			return;
++		}
++	}
++	rcu_read_unlock();
++
++	/* ---- 慢路径: 新 pid ---- */
++	e = kzalloc(sizeof(*e), GFP_ATOMIC);
++	if (!e) {
++		atomic64_inc(&g_pvr_gpuacct_total_kicks);	/* 降级: 总量仍计, 逐进程暂缺 */
++		pvr_gpuacct_start_sampling();
++		return;
++	}
++	e->pid = task_tgid_nr(current);
++	atomic64_set(&e->kicks, 1);
++	e->last_kick = jiffies;
++
++	spin_lock(&g_pvr_gpuacct_lock);
++	{
++		struct pvr_gpuacct *dup;
++
++		list_for_each_entry(dup, &g_pvr_gpuacct_list, node) {
++			if (dup->pid == e->pid) {	/* 竞态: 别的 CPU 刚插入 */
++				atomic64_inc(&dup->kicks);
++				dup->last_kick = jiffies;
++				spin_unlock(&g_pvr_gpuacct_lock);
++				kfree(e);
++				atomic64_inc(&g_pvr_gpuacct_total_kicks);
++				pvr_gpuacct_start_sampling();
++				return;
++			}
++		}
++	}
++	list_add_rcu(&e->node, &g_pvr_gpuacct_list);
++	atomic_inc(&g_pvr_gpuacct_entries);
++	spin_unlock(&g_pvr_gpuacct_lock);
++	atomic64_inc(&g_pvr_gpuacct_total_kicks);
++	pvr_gpuacct_start_sampling();
++}
++
++/* v6/R4: 回收"进程已消失"的条目; 条目数超上限时再淘汰最久未活动的一条 */
++static void pvr_gpuacct_reap(void)
++{
++	struct pvr_gpuacct *e, *tmp, *oldest = NULL;
++	IMG_UINT32 n, reaped = 0, evicted = 0;
++
++	/* 1) 判活 (RCU 下 find_vpid/pid_task 是安全用法) */
++	rcu_read_lock();
++	list_for_each_entry_rcu(e, &g_pvr_gpuacct_list, node) {
++		IMG_BOOL alive;
++
++		rcu_read_lock();
++		alive = (pid_task(find_vpid(e->pid), PIDTYPE_PID) != NULL);
++		rcu_read_unlock();
++		if (!alive)
++			e->reap = IMG_TRUE;
++	}
++	rcu_read_unlock();
++
++	/* 2) 摘除 (持锁改链; kfree_rcu 负责等读者退出) */
++	spin_lock(&g_pvr_gpuacct_lock);
++	list_for_each_entry_safe(e, tmp, &g_pvr_gpuacct_list, node) {
++		if (!e->reap)
++			continue;
++		list_del_rcu(&e->node);
++		atomic_dec(&g_pvr_gpuacct_entries);
++		kfree_rcu(e, rcu);
++		reaped++;
++	}
++
++	/* 3) 兜底: 超上限时淘汰最久未活动的条目 (正常情况下不会触发) */
++	n = (IMG_UINT32)atomic_read(&g_pvr_gpuacct_entries);
++	if (n > PVR_GPUACCT_MAX_ENTRIES) {
++		list_for_each_entry(e, &g_pvr_gpuacct_list, node) {
++			if (!oldest || time_before(e->last_kick, oldest->last_kick))
++				oldest = e;
++		}
++		if (oldest) {
++			list_del_rcu(&oldest->node);
++			atomic_dec(&g_pvr_gpuacct_entries);
++			kfree_rcu(oldest, rcu);
++			evicted = 1;
++		}
++	}
++	spin_unlock(&g_pvr_gpuacct_lock);
++
++	/* 统计只在 pr_debug 里输出 (本内核未开 DYNAMIC_DEBUG → 默认零开销);
++	 * 验证回收行为请用 /proc/slabinfo 的 kmalloc-96 计数 (见 GPU文档 §十三)。 */
++	pr_debug("pvr_gpuacct: reap freed=%u evicted=%u live=%d\n",
++		 (unsigned int)reaped, (unsigned int)evicted,
++		 atomic_read(&g_pvr_gpuacct_entries));
++}
++
++static void pvr_gpuacct_tick(struct work_struct *work)
++{
++	struct pvr_gpuacct *e;
++	RGXFWIF_GPU_UTIL_STATS s;
++	PVRSRV_RGXDEV_INFO *psDevInfo;
++	IMG_UINT64 ui64BusyNs = 0;
++	IMG_UINT32 kicks;
++
++	if (g_pvr_gpuacct_devnode) {
++		psDevInfo = (PVRSRV_RGXDEV_INFO *)g_pvr_gpuacct_devnode->pvDevice;
++		if (psDevInfo && psDevInfo->pfnGetGpuUtilStats) {
++			memset(&s, 0, sizeof(s));
++			if (psDevInfo->pfnGetGpuUtilStats(g_pvr_gpuacct_devnode,
++							  g_pvr_gpuacct_util_user,
++							  &s) == PVRSRV_OK && s.bValid)
++				ui64BusyNs = s.ui64GpuStatActive * 1000ULL; /* us -> ns */
++		}
++	}
++
++	/* v6/R2: 分配忙时不再持锁 —— 总量与各条目都用 atomic64_xchg 取走本周期计数 */
++	kicks = (IMG_UINT32)atomic64_xchg(&g_pvr_gpuacct_total_kicks, 0);
++	rcu_read_lock();
++	list_for_each_entry_rcu(e, &g_pvr_gpuacct_list, node) {
++		IMG_UINT32 k = (IMG_UINT32)atomic64_xchg(&e->kicks, 0);
++
++		if (k && ui64BusyNs && kicks)
++			e->ui64BusyNs += (ui64BusyNs * k) / kicks;
++	}
++	rcu_read_unlock();
++
++	/* v6/R4: 回收已消失进程的条目 */
++	pvr_gpuacct_reap();
++
++	/* 1) 空闲自停: 连续若干次没有任何 kick → 停掉采样循环 (下次 kick 再拉起) */
++	if (!kicks) {
++		if (++g_pvr_gpuacct_idle >= PVR_GPUACCT_IDLE_TICKS) {
++			atomic_set(&g_pvr_gpuacct_running, 0);
++			g_pvr_gpuacct_idle = 0;
++			pr_debug("pvr_gpuacct: idle, sampling paused\n");
++			/* 兜底: 停止瞬间若有新 kick 进来, 重新拉起 (避免丢唤醒) */
++			atomic_set(&g_pvr_gpuacct_running, 0);
++			if (atomic64_read(&g_pvr_gpuacct_total_kicks))
++				pvr_gpuacct_start_sampling();
++			return;
++		}
++	} else {
++		g_pvr_gpuacct_idle = 0;
++	}
++
++	/* 2) 冻结检测与自愈 (v4): 有 kick 却取到 0 → 连续若干次后**重置自己的
++	 *    util-user 状态** (unregister + register, 让驱动侧累计状态从头开始),
++	 *    而不是放宽采样间隔 —— 放宽间隔会因环形缓冲跟不上而永久锁死 (v3 教训)。 */
++	if (kicks && !ui64BusyNs) {
++		g_pvr_gpuacct_zeros++;
++		if (g_pvr_gpuacct_zeros >= PVR_GPUACCT_ZERO_LIMIT) {
++			if (g_pvr_gpuacct_util_user)
++				SORgxGpuUtilStatsUnregister(g_pvr_gpuacct_util_user);
++			g_pvr_gpuacct_util_user = NULL;
++			if (SORgxGpuUtilStatsRegister(&g_pvr_gpuacct_util_user) != PVRSRV_OK) {
++				g_pvr_gpuacct_util_user = NULL;
++				PVRGpuAcctWarn("util stats stalled - user reset FAILED");
++			} else {
++				PVRGpuAcctWarn("util stats stalled - util user state reset");
++			}
++			g_pvr_gpuacct_zeros = 0;
++		}
++	} else if (g_pvr_gpuacct_zeros) {
++		/* v5: 区分两种"零值计数清零"的情形, 避免把空闲误读成"利用率恢复":
++		 *   - 有 kick 且取到忙时 → 真的从冻结中恢复 (pr_warn, 值得关注)
++		 *   - 无 kick (GPU 空闲)  → 只是没活儿, 不是恢复 (pr_debug, 默认不打印)
++		 * 实测教训: v4 期间 72 条 "recovered" 里绝大多数是空闲触发的噪声。
++		 * 注: PVRGpuAcctWarn() 只接受一个字符串 (非 printf 风格), 故先格式化到缓冲区。 */
++		if (kicks) {
++			IMG_CHAR szMsg[96];
++			OSSNPrintf(szMsg, sizeof(szMsg),
++				   "util stats recovered (kicks>0, busy=%llu ns)",
++				   (unsigned long long)ui64BusyNs);
++			PVRGpuAcctWarn(szMsg);
++		} else {
++			pr_debug("pvr_gpuacct: zero-streak cleared while idle (no kicks)\n");
++		}
++		g_pvr_gpuacct_zeros = 0;
++	}
++
++	/* 固定 1s 稳定轮询 (安全区; 不放宽) */
++	schedule_delayed_work(&g_pvr_gpuacct_work,
++			      msecs_to_jiffies(PVR_GPUACCT_TICK_MS));
++}
++
++void PVRGpuAcctInit(PVRSRV_DEVICE_NODE *psDeviceNode)
++{
++	if (g_pvr_gpuacct_started)
++		return;
++	if (SORgxGpuUtilStatsRegister(&g_pvr_gpuacct_util_user) != PVRSRV_OK) {
++		PVR_DPF((PVR_DBG_WARNING, "pvr_gpuacct: util user register failed"));
++		return;
++	}
++	g_pvr_gpuacct_devnode = psDeviceNode;
++	INIT_DELAYED_WORK(&g_pvr_gpuacct_work, pvr_gpuacct_tick);
++	atomic_set(&g_pvr_gpuacct_running, 0);	/* 等第一次 kick 再开始采样 */
++	g_pvr_gpuacct_started = IMG_TRUE;
++	PVRGpuAcctWarn("started (v6: tick 1000ms steady, on-demand, self-heal, lock-free, reap)");
++}
++
++void PVRGpuAcctDeinit(void)
++{
++	struct pvr_gpuacct *e, *tmp;
++	LIST_HEAD(dead);
++
++	if (!g_pvr_gpuacct_started)
++		return;
++	g_pvr_gpuacct_started = IMG_FALSE;
++	atomic_set(&g_pvr_gpuacct_running, 0);
++	cancel_delayed_work_sync(&g_pvr_gpuacct_work);
++	if (g_pvr_gpuacct_util_user)
++		SORgxGpuUtilStatsUnregister(g_pvr_gpuacct_util_user);
++	g_pvr_gpuacct_util_user = NULL;
++	g_pvr_gpuacct_devnode = NULL;
++
++	/* v6: 先把条目从链表摘下来 (list_del_rcu) → 任何新读者都找不到它们;
++	 * 再等一个 RCU 宽限期 (已在里面的读者退出) → 才能安全 kfree。 */
++	spin_lock(&g_pvr_gpuacct_lock);
++	list_for_each_entry_safe(e, tmp, &g_pvr_gpuacct_list, node) {
++		list_del_rcu(&e->node);
++		list_add_tail(&e->node, &dead);
++	}
++	atomic_set(&g_pvr_gpuacct_entries, 0);
++	spin_unlock(&g_pvr_gpuacct_lock);
++
++	synchronize_rcu();
++
++	/* 竞态兜底: 卸载瞬间仍有 kick 走到慢路径时, 它可能把新条目挂回链表 →
++	 * 再收一次并等第二个宽限期, 确保不泄漏、也不留下可被读取的条目。 */
++	spin_lock(&g_pvr_gpuacct_lock);
++	list_for_each_entry_safe(e, tmp, &g_pvr_gpuacct_list, node) {
++		list_del_rcu(&e->node);
++		list_add_tail(&e->node, &dead);
++	}
++	spin_unlock(&g_pvr_gpuacct_lock);
++	synchronize_rcu();
++
++	list_for_each_entry_safe(e, tmp, &dead, node) {
++		list_del(&e->node);
++		kfree(e);
++	}
++}
++
++unsigned long long PVRGpuAcctGetBusyNs(int pid)
++{
++	struct pvr_gpuacct *e;
++	IMG_UINT64 ui64Busy = 0;
++
++	rcu_read_lock();
++	list_for_each_entry_rcu(e, &g_pvr_gpuacct_list, node) {
++		if (e->pid == pid) {
++			ui64Busy = e->ui64BusyNs;
++			break;
++		}
++	}
++	rcu_read_unlock();
++	return (unsigned long long)ui64Busy;
++}
++
+ static PVRSRV_ERROR RGXGetGpuUtilStats(PVRSRV_DEVICE_NODE *psDeviceNode,
+                                        IMG_HANDLE hGpuUtilUser,
+                                        RGXFWIF_GPU_UTIL_STATS *psReturnStats)
+--- img-bxm-dkms-src/img-bxm/linux/rogue_km/services/server/devices/rogue/rgxta3d.c	2026-03-19 19:26:40.000000000 +0800
++++ img-bxm-dkms-src-gpuacct/img-bxm/linux/rogue_km/services/server/devices/rogue/rgxta3d.c	2026-09-12 21:41:13.224439495 +0800
+@@ -43,6 +43,8 @@
+ /* for the offsetof macro */
+ #if defined(__linux__)
+ #include <linux/stddef.h>
++
++extern void PVRGpuAcctKick(void);	/* pvr_gpuacct lab */
+ #else
+ #include <stddef.h>
+ #endif
+@@ -3482,6 +3484,7 @@
+ 								 IMG_UINT32					ui32NumberOfMRTs,
+ 								 IMG_UINT64					ui64DeadlineInus)
+ {
++	PVRGpuAcctKick();	/* pvr_gpuacct lab: 按进程记 GPU 提交 */
+ 	/* per-context helper structures */
+ 	RGX_CCB_CMD_HELPER_DATA *pasTACmdHelperData = psRenderContext->asTACmdHelperData;
+ 	RGX_CCB_CMD_HELPER_DATA *pas3DCmdHelperData = psRenderContext->as3DCmdHelperData;
+--- img-bxm-dkms-src/img-bxm/linux/rogue_km/services/server/devices/rogue/rgxtransfer.c	2026-03-19 19:26:40.000000000 +0800
++++ img-bxm-dkms-src-gpuacct/img-bxm/linux/rogue_km/services/server/devices/rogue/rgxtransfer.c	2026-09-12 21:41:13.240439612 +0800
+@@ -42,6 +42,8 @@
+ */ /**************************************************************************/
+ 
+ #include "pdump_km.h"
++
++extern void PVRGpuAcctKick(void);	/* pvr_gpuacct lab */
+ #include "rgxdevice.h"
+ #include "rgxccb.h"
+ #include "rgxutils.h"
+@@ -628,6 +630,7 @@
+ 									   IMG_UINT32				*paui32SyncPMRFlags,
+ 									   PMR						**ppsSyncPMRs)
+ {
++	PVRGpuAcctKick();	/* pvr_gpuacct lab: 按进程记 GPU 提交 */
+ 	return PVRSRVRGXSubmitTransfer3KM(psTransferContext,
+ 									  ui32PrepareCount,
+ 									  paui32ClientUpdateCount,
+@@ -671,6 +674,7 @@
+ 									   IMG_UINT32				*paui32SyncPMRFlags,
+ 									   PMR						**ppsSyncPMRs)
+ {
++	PVRGpuAcctKick();	/* pvr_gpuacct lab: 按进程记 GPU 提交 */
+ 	PVRSRV_DEVICE_NODE *psDeviceNode = psTransferContext->psDeviceNode;
+ 	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
+ 	RGX_CCB_CMD_HELPER_DATA *pas3DCmdHelper;
+--- img-bxm-dkms-src/img-bxm/linux/rogue_km/services/server/env/linux/pvr_drm.c	2026-03-19 19:26:40.000000000 +0800
++++ img-bxm-dkms-src-gpuacct/img-bxm/linux/rogue_km/services/server/env/linux/pvr_drm.c	2026-09-14 23:43:45.893234714 +0800
+@@ -76,6 +76,20 @@
+ #include "dkf_server.h"
+ #include "dkp_impl.h"
+ 
++/* pvr_gpuacct lab: 实现在 services/server/devices/rogue/rgxinit.c
++ * (设备层实现 + DRM 层只调用, 避免把设备层头文件拉进来导致 sync 头冲突) */
++void PVRGpuAcctKick(void);
++void PVRGpuAcctInit(void *psDeviceNode);
++void PVRGpuAcctDeinit(void);
++unsigned long long PVRGpuAcctGetBusyNs(int pid);
++void PVRGpuAcctWarn(const char *msg);
++
++/* 记账模块的告警出口: 用 pr_warn 保证一定进 dmesg (PVR_DPF 在 release 构建里会被过滤) */
++void PVRGpuAcctWarn(const char *msg)
++{
++	pr_warn("pvr_gpuacct: %s\n", msg);
++}
++
+ #define PVR_DRM_DRIVER_NAME PVR_DRM_NAME
+ #define PVR_DRM_DRIVER_DESC "Imagination Technologies PVR DRM"
+ #define	PVR_DRM_DRIVER_DATE "20170530"
+@@ -312,6 +326,8 @@
+ 	}
+ 
+ 	err = PVRSRVDeviceInit(priv->dev_node);
++	if (!err)
++		PVRGpuAcctInit((void *)priv->dev_node);	/* lab */
+ 	if (err) {
+ 		DRM_ERROR("device %p initialisation failed (err=%d)\n",
+ 			  ddev->dev, err);
+@@ -377,6 +393,8 @@
+ 
+ 	DRM_DEBUG_DRIVER("device %p\n", ddev->dev);
+ 
++	PVRGpuAcctDeinit();	/* lab */
++
+ 	drm_mode_config_cleanup(ddev);
+ 
+ 	PVRSRVDeviceDeinit(priv->dev_node);
+@@ -497,9 +515,23 @@
+ 	               my_pid,
+ 	               pvr_connection->ui32Type);
+ 
+-	/* Call into OS-specific drm_show_fdinfo if it is supported */
++	/* v6/R5: 不再自己打 drm-client-id / drm-driver (内核 drm_show_fdinfo() 已经打过,
++	 * 之前重复出两遍, 对按 DRM usage-stats 规范解析的工具会造成歧义)。
++	 * 我们的 engine 行改到内核输出**之后**打印: 文件里顺序变成
++	 *   drm-driver: / drm-client-id: <内核真值> / …内存统计… / drm-engine-pvr: <ns> ns
++	 * htop 的契约是"engine 行之前的某处要有 drm-client-id" → 依然满足 (已实测)。 */
+ #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0))
++	/* Call into OS-specific drm_show_fdinfo if it is supported */
+ 	drm_show_fdinfo(seq_file, file);
++
++	seq_printf(seq_file, "drm-engine-pvr:\t%llu ns\n",
++		   PVRGpuAcctGetBusyNs(my_pid));
++#else
++	/* 老内核: 内核不提供 drm_show_fdinfo(), 由我们自己补齐 htop 需要的前缀 */
++	seq_printf(seq_file, "drm-client-id:\t%d\n", my_pid);
++	seq_printf(seq_file, "drm-driver:\t%s\n", PVR_DRM_DRIVER_NAME);
++	seq_printf(seq_file, "drm-engine-pvr:\t%llu ns\n",
++		   PVRGpuAcctGetBusyNs(my_pid));
+ #endif	/* LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0) */
+ }
+ #endif /* SUPPORT_LINUX_FDINFO */

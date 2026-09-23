@@ -1,0 +1,10 @@
+GNU GENERAL PUBLIC LICENSE
+Version 2, June 1991
+
+本仓库内的脚本、自研源码与文档以 GPL-2.0 授权发布（SPDX: GPL-2.0-only）。
+
+完整的 GPL-2.0 许可证文本见：
+  https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+或本机 /usr/share/common-licenses/GPL-2。
+
+仓库内随附的第三方二进制/库不适用上述授权，其版权与许可见 THIRD-PARTY.md。

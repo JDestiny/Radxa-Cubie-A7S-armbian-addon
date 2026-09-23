@@ -1,0 +1,27 @@
+# 测试运行产物
+tests/reports/
+**/测试报告-*.log
+
+# 运行时缓存
+tests/modules/tools/gpu/.shaders/
+**/__pycache__/
+*.pyc
+
+# 编译中间产物
+*.o
+*.mod
+*.mod.c
+.*.cmd
+Module.symvers
+modules.order
+
+# 大体积厂商组件（按 tools/厂商组件获取.md 自行放置）
+gpu/img-bxm-dkms-src/
+gpu/img-bxm-dkms-src-gpuacct/
+gpu/userspace/
+npu/ai-sdk/
+ve/testcases/
+
+# 编辑器/系统文件
+.DS_Store
+*.swp

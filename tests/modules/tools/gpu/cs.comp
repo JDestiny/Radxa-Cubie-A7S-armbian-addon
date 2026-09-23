@@ -1,0 +1,15 @@
+#version 450
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(binding = 0) buffer Buf { float px[]; } buf;
+layout(push_constant) uniform PC { float t; uint w; uint h; } pc;
+void main() {
+  uint x = gl_GlobalInvocationID.x;
+  uint y = gl_GlobalInvocationID.y;
+  if (x >= pc.w || y >= pc.h) return;
+  uint i = y * pc.w + x;
+  float v = buf.px[i];
+  v = v * 0.5 + (buf.px[y * pc.w + ((x + 1) % pc.w)] +
+                 buf.px[((y + 1) % pc.h) * pc.w + x]) * 0.25;
+  v += pc.t * 0.0001;
+  buf.px[i] = v - floor(v);
+}

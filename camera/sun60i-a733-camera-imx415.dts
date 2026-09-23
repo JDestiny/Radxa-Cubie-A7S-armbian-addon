@@ -1,0 +1,356 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Cubie A7S (sun60i-a733) -- Radxa Camera 4K (IMX415) MIPI-CSI enablement
+ *
+ * Ported from Radxa's own r6 image overlay
+ *     /boot/dtbo/cubie-a7a-radxa-camera-4k-415.dtbo{.disabled}
+ * back to source for Armbian's overlay loader.  Radxa drives its overlays from
+ * rsetup over /boot/dtbo/; Armbian's boot.scr instead reads
+ *     /boot/overlay-user/<file>.dtbo   with  user_overlays=<file>   in armbianEnv.txt
+ * which is used here because /boot/dtb/ belongs to the linux-dtb-* package and
+ * would be wiped by a kernel/dtb upgrade.
+ *
+ * Radxa's own metadata block is unused by Armbian and is kept as a comment:
+ *     title       = "Enable Radxa Camera 4K"
+ *     compatible  = "radxa,cubie-a7a", "radxa,cubie-a7z", "radxa,cubie-a7s"
+ *     category    = "camera"
+ *     exclusive   = "vind0", "csi1", "csi2", "PE8", "PE9", "PE3", "PE4"
+ *     description = "Enable Radxa Camera 4K IMX415."
+ *
+ * Prerequisites (A-class patches, see A-编译期修复/):
+ *    0012  vind0 supplies       -- without it sunxi-vin-media fails to probe (-1)
+ *   0017  CONFIG_SENSOR_IMX415 -- adds the config symbol
+ *   0018  SENSOR_IMX415 wiring -- imx415_mipi.c is an ORPHAN in this tree: the
+ *                               file exists but no Kconfig symbol and no
+ *                               Makefile line reference it, so it is never
+ *                               compiled.  0018 adds both.
+ *
+ * Install: sudo B-安装后配置/camera/install-camera-overlays.sh install imx415
+ *
+ * WHY THIS IS AN OVERLAY AND NOT PART OF THE BOARD DTS
+ *   The camera is an optional plug-in module and the pipeline runs faster with
+ *   it: csi_top/csi_isp are 600/540 MHz in the base DTB but Radxa raises both to
+ *   704 MHz (0x29f63000 == 704000000, 与官方 overlay 源码同值) for the camera.  Keeping that out of the board file
+ *   keeps the no-camera boot bit-identical to the vendor default.
+ *
+ * DELIBERATE DEVIATION FROM RADXA -- fragment@1 also drops csi1's pinctrl-0/1
+ *   In *this* 6.6 vendor tree the csi1 node (csi@5821000) carries the
+ *   **parallel** CSI0 pinmux: ncsi0_8bit@0 claims PE0-PE4 and PE6-PE10 as
+ *   function "ncsi0".  Those pins are exactly what this camera needs:
+ *       PE3/PE4  twi3  -- the sensor's control (I2C) bus
+ *       PE8/PE9  sensor0_pwdn / sensor0_reset
+ *   so leaving the pinmux in place re-muxes the sensor's I2C away and the
+ *   sensor never answers.  Radxa's 5.15 tree assigns csi1 a *different* pinmux
+ *   (ncsi1_8bit on PK0..PK2/PK12..PK19, i.e. the MIPI pins), which is why only
+ *   their 8M overlay drops it -- carrying their code over verbatim would be
+ *   wrong here, so all three of ours drop it.
+ *   Note PE5 (csi_mclk1) is deliberately *not* part of ncsi0_8bit, which is why
+ *   sensor0_mclk_id = <1> below: MCLK1 is the only MIPI master clock that the
+ *   parallel-CSI pinmux does not fight over.
+ */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	/* [0] VIN media block.
+	 *
+	 * csi_top/csi_isp: the camera needs 704 MHz, not the board default (官方 overlay 源码写 704000000)。
+	 * The three *_supply/*_vol pairs are what lets sunxi-vin-media probe at all
+	 * (vin_pinpower_get_set() calls set_voltage(); with no supply the dummy
+	 * regulator returns -EINVAL and probe fails with -1 -- see A-class 0012).
+	 * Radxa uses reg_bldo1 (AXP8191 BLDO1) at 1.8 V for all three.
+	 */
+	fragment@0 {
+		target = <&vind0>;
+
+		__overlay__ {
+			csi_top = <0x29f63000>;
+			csi_isp = <0x29f63000>;
+			vind_mclkpin-supply = <&reg_bldo1>;
+			vind_mclkpin_vol = <1800000>;
+			vind_mcsipin-supply = <&reg_bldo1>;
+			vind_mcsipin_vol = <1800000>;
+			vind_mipipin-supply = <&reg_bldo1>;
+			vind_mipipin_vol = <1800000>;
+			status = "okay";
+		};
+	};
+
+	/* [1] CSI1 -- the MIPI CSI instance the Radxa camera connector is wired to.
+	 * The pinctrl-0;/pinctrl-1; deletions release the parallel-CSI pinmux, see
+	 * the deviation note in the header.  An empty property assignment is the
+	 * DT way of deleting a property inherited from the base tree.
+	 */
+	fragment@1 {
+		target = <&csi1>;
+
+		__overlay__ {
+			status = "okay";
+			pinctrl-0;
+			pinctrl-1;
+		};
+	};
+
+	/* [2] MIPI1 D-PHY.  pinctrl-0/1 are dropped for the same class of reason:
+	 * the base tree muxes PK10-PK19 to "mcsib" (generic pin control), while the
+	 * vendor MIPI driver programs the D-PHY itself.  Radxa drops these in all
+	 * three of its camera overlays, so this part is straight port.
+	 */
+	fragment@2 {
+		target = <&mipi1>;
+
+		__overlay__ {
+			status = "okay";
+			pinctrl-0;
+			pinctrl-1;
+		};
+	};
+
+	/* [3]-[11] TDM / ISP / scaler.  work_mode = <1> switches the block from
+	 * "online" (writes straight to display) to "offline" (writes to memory),
+	 * which is what a capture pipeline needs; the rest only need enabling.
+	 */
+	fragment@3 {
+		target = <&tdm0>;
+
+		__overlay__ {
+			work_mode = <0x01>;
+			status = "okay";
+		};
+	};
+
+	fragment@4 {
+		target = <&isp00>;
+
+		__overlay__ {
+			work_mode = <0x01>;
+			status = "okay";
+		};
+	};
+
+	fragment@5 {
+		target = <&isp01>;
+
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment@6 {
+		target = <&scaler00>;
+
+		__overlay__ {
+			work_mode = <0x01>;
+			status = "okay";
+		};
+	};
+
+	fragment@7 {
+		target = <&scaler01>;
+
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment@8 {
+		target = <&scaler10>;
+
+		__overlay__ {
+			work_mode = <0x01>;
+			status = "okay";
+		};
+	};
+
+	fragment@9 {
+		target = <&scaler11>;
+
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment@10 {
+		target = <&scaler20>;
+
+		__overlay__ {
+			work_mode = <0x01>;
+			status = "okay";
+		};
+	};
+
+	fragment@11 {
+		target = <&scaler30>;
+
+		__overlay__ {
+			work_mode = <0x01>;
+			status = "okay";
+		};
+	};
+
+	/* [12] The sensor itself.
+	 *
+	 * sensor0_mname is matched against the sensor driver that registered itself
+	 * at module load (USE_SPECIFIC_CCI is defined, so cci_dev_init_helper() calls
+	 * the driver's probe(NULL,NULL) directly -- there is no i2c client probing),
+	 * therefore the module must be loaded: modprobe imx415_mipi
+	 *
+	 * twi_cci_id = 3 -> twi3 (PE3/PE4), mclk_id = 1 -> MCLK1 (PE5), isp_used = 1
+	 * and fmt = 1 -> MIPI through the ISP, i.e. no parallel interface involved.
+	 *
+	 * The base DTB leaves sensor0_iovdd/avdd/dvdd empty on purpose: the Radxa
+	 * module is powered from the connector, and sensor_helper.c uses
+	 * regulator_get_optional(), so missing rails are fine (it only warns).
+	 * reset/pwdn are raw pinctrl/gpio specifiers: <&pio bank pin flag>, bank 4 =
+	 * PE, flag 1 = active-low (reset), 0 = active-high (pwdn).
+	 */
+	fragment@12 {
+		target = <&sensor0>;
+
+		__overlay__ {
+			device_type = "sensor0";
+			sensor0_mname = "imx415_mipi";
+			sensor0_twi_addr = <0x34>;
+			sensor0_twi_cci_id = <0x03>;
+			sensor0_mclk_id = <0x01>;
+			sensor0_pos = "rear";
+			sensor0_isp_used = <0x01>;
+			sensor0_fmt = <0x01>;
+			sensor0_stby_mode = <0x00>;
+			sensor0_vflip = <0x00>;
+			sensor0_hflip = <0x00>;
+			sensor0_reset = <&pio 4 9 1>;
+			sensor0_pwdn = <&pio 4 8 0>;
+			status = "okay";
+		};
+	};
+
+	/* [13]-[16] The VINC (video input) cores.
+	 *
+	 * Label and property prefix disagree on purpose -- the base tree labels these
+	 * nodes vinc00/vinc01/vinc10/vinc11 but their device_type/property prefix is
+	 * vinc0/vinc1/vinc4/vinc5 respectively (verified in this board's DTB:
+	 * vinc@5831000 is device_type "vinc4").  Radxa's overlay does the same, and
+	 * the driver reads the properties, so the prefixes below are the correct ones.
+	 *
+	 * vinc0/vinc4 capture through CSI1+MIPI1 and are the two "real" channels
+	 * (work_mode = 1); vinc1/vinc5 are their ISP-writeback siblings.
+	 */
+	fragment@13 {
+		target = <&vinc00>;
+
+		__overlay__ {
+			vinc0_csi_sel = <0x01>;
+			vinc0_mipi_sel = <0x01>;
+			vinc0_isp_sel = <0x00>;
+			vinc0_isp_tx_ch = <0x00>;
+			vinc0_tdm_rx_sel = <0x00>;
+			vinc0_rear_sensor_sel = <0x00>;
+			vinc0_front_sensor_sel = <0x00>;
+			vinc0_sensor_list = <0x00>;
+			device_id = <0x00>;
+			work_mode = <0x01>;
+			status = "okay";
+		};
+	};
+
+	fragment@14 {
+		target = <&vinc01>;
+
+		__overlay__ {
+			vinc1_csi_sel = <0x01>;
+			vinc1_mipi_sel = <0x01>;
+			vinc1_isp_sel = <0x01>;
+			vinc1_isp_tx_ch = <0x00>;
+			vinc1_tdm_rx_sel = <0x01>;
+			vinc1_rear_sensor_sel = <0x00>;
+			vinc1_front_sensor_sel = <0x00>;
+			vinc1_sensor_list = <0x00>;
+			device_id = <0x01>;
+			status = "okay";
+		};
+	};
+
+	fragment@15 {
+		target = <&vinc10>;
+
+		__overlay__ {
+			vinc4_csi_sel = <0x01>;
+			vinc4_mipi_sel = <0x01>;
+			vinc4_isp_sel = <0x00>;
+			vinc4_isp_tx_ch = <0x00>;
+			vinc4_tdm_rx_sel = <0x00>;
+			vinc4_rear_sensor_sel = <0x00>;
+			vinc4_front_sensor_sel = <0x00>;
+			vinc4_sensor_list = <0x00>;
+			device_id = <0x04>;
+			work_mode = <0x01>;
+			status = "okay";
+		};
+	};
+
+	fragment@16 {
+		target = <&vinc11>;
+
+		__overlay__ {
+			vinc5_csi_sel = <0x01>;
+			vinc5_mipi_sel = <0x01>;
+			vinc5_isp_sel = <0x01>;
+			vinc5_isp_tx_ch = <0x00>;
+			vinc5_tdm_rx_sel = <0x01>;
+			vinc5_rear_sensor_sel = <0x00>;
+			vinc5_front_sensor_sel = <0x00>;
+			vinc5_sensor_list = <0x00>;
+			device_id = <0x05>;
+			status = "okay";
+		};
+	};
+
+	/* [17] twi3 -- the sensor's control bus, on PE3/PE4.
+	 *
+	 * twi_drv_used = 1 selects the vendor "TWI driver" mode (as opposed to the
+	 * generic i2c-sunxi path) and no_suspend = 1 keeps the bus alive across
+	 * system suspend, which matters because the sensor has no power sequencing.
+	 * twi-supply points at the same 1.8 V rail as the CSI pins; AXP8191 BLDO1 is
+	 * a real rail (not a placeholder) so it stays referenced and is never swept.
+	 */
+	fragment@17 {
+		target = <&twi3>;
+
+		__overlay__ {
+			clock-frequency = <400000>;
+			pinctrl-names = "default", "sleep";
+			pinctrl-0 = <&twi3_pins_default>;
+			pinctrl-1 = <&twi3_pins_sleep>;
+			twi_drv_used = <0x01>;
+			no_suspend = <0x01>;
+			twi-supply = <&reg_bldo1>;
+			status = "okay";
+		};
+	};
+
+	/* [18] Pin configuration for twi3, created under the pinctrl node.
+	 *
+	 * These two nodes are new (the base tree has no twi3@* child), so fragment@17
+	 * can reference them by label -- dtc turns that into a __local_fixups__ entry
+	 * that is resolved when the overlay is applied.
+	 */
+	fragment@18 {
+		target = <&pio>;
+
+		__overlay__ {
+			twi3_pins_default: twi3@0 {
+				pins = "PE3", "PE4";
+				function = "twi3";
+				drive-strength = <10>;
+				bias-pull-up;
+			};
+
+			twi3_pins_sleep: twi3@1 {
+				pins = "PE3", "PE4";
+				function = "gpio_in";
+			};
+		};
+	};
+};
