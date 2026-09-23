@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* cedar_seg.c — A733 VE 硬解长流压测 (分段整流提交)
  *
  * cedar_smoke 的整流模式已验证可用, 但解码器输入 SBM 仅 8MB,

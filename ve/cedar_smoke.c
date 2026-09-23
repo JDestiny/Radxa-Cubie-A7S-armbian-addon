@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* cedar_smoke.c — A733 VE 硬解冒烟测试 (libvdecoder 直调, 兼容性验证)
  *
  * 目的: 验证从 r6 镜像提取的闭源 VE 解码栈 (配套 vendor 5.15 内核)

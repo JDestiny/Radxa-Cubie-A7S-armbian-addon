@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* cedar_stdin.c — A733 VE 硬解流式解码 (stdin 输入, 不落盘)
  *
  * 用于 SMB/网络流直测: ffmpeg/任何程序把 Annex-B 裸流写管道,

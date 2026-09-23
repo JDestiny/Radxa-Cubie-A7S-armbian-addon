@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <stdio.h>

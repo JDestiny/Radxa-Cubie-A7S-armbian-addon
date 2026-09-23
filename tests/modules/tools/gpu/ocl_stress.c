@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* ocl_stress.c — PowerVR OpenCL 真实计算压测
  * 大矩阵乘 (1024x1024) 循环执行, 校验结果, 统计 GFLOPS
  * 编译: gcc -O2 -o ocl_stress ocl_stress.c -lOpenCL -lm

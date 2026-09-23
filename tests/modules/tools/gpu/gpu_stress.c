@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* gpu_stress.c — A733 PowerVR GPU 真实渲染压测 (EGL surfaceless + GLES2)
  *
  * headless 环境: EGL_PLATFORM=surfaceless 无窗口渲染;
