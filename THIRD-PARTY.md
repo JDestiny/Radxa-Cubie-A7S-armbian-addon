@@ -16,6 +16,7 @@
 | `camera/isp/pkgs/*.deb` | ISP 与 cedarc 用户态 deb 包（`libAWIspApi-isp-602-arm64`、`libcedarc-dev-2.0.0-arm64`） | Radxa 官方发布物 | 全志闭源，随厂商发布物分发 |
 | `tz2hwmon/tz2hwmon.ko` | 预编译内核模块 | 本项目编译（源码在同目录 `tz2hwmon.c`） | GPL-2.0-only |
 | `gpu/test/*`（二进制） | GPU 三栈自检程序 | 本项目编译（源码在同目录 `*.c`） | MIT |
+| `assets/pet/whale-girl-refined*.{png,gif}` | 吉祥物立绘与 idle 动画预览（「鲸鱼娘（精致版）」） | `@linxin666/dsh-pet` v0.4.2 的 `assets/whale-refined/`（精灵图 idle 首帧；GIF 原样附带） | 素材自带声明 MIT（见其 `pet.json`）；插件包为 Apache-2.0。详见 [`AI-DISCLOSURE.md`](AI-DISCLOSURE.md) §五 |
 
 **不在本仓库**（需自行从厂商官方发布物取得，见 `tools/厂商组件获取.md`）：
 
