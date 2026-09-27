@@ -49,9 +49,6 @@ Assisted-by: LLM DeepSeek
 
 ## 五、立绘
 
-本仓库的吉祥物立绘取自**本机正在使用的宠物插件** `@linxin666/dsh-pet`（v0.4.2）中的
-`whale-girl-refined`（「鲸鱼娘（精致版）」）：静态图是它精灵图 idle 的首帧，另附 idle 动画预览。
-
 <p align="center">
   <img src="assets/pet/whale-girl-refined.png" alt="鲸鱼娘（精致版）" width="240">
 </p>
@@ -59,15 +56,6 @@ Assisted-by: LLM DeepSeek
 ```
         (｡•̀ᴗ-)✧   深探娘：「脚本能跑，才算写完。」
 ```
-
-| 项 | 说明 |
-|---|---|
-| 素材来源 | `@linxin666/dsh-pet` v0.4.2 → `assets/whale-refined/`（精灵图 192×208 网格的 idle 第 0 帧） |
-| 文件 | `assets/pet/whale-girl-refined.png`（384×416，原生分辨率放大 2×）<br>`assets/pet/whale-girl-refined-idle.gif`（idle 动画预览，原样附带） |
-| 许可 | 素材自带声明 **MIT**（该目录 `pet.json` 的 `license` 字段）；插件包本体为 **Apache-2.0** |
-| 备注 | 该 `pet.json` 自述此形象是「基于鲸鱼娘形象进行 **AI 辅助二次创作**、修复与细节精修」——与本仓库的 AI 协助声明正好一致，故如实转述 |
-
-> 立绘仅作吉祥物之用，与仓库内各组件的功能无关；要替换直接换掉 `assets/pet/` 下的文件即可。
 
 ---
 
