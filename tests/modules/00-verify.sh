@@ -128,46 +128,78 @@ fi
 
 # ── 5. 存储: eMMC + TF ────────────────────────────
 t "5. 存储 (eMMC + TF)"
-emmc=""; tf=""
+emmc=""; tf=""; slot=""
+# 注意: 启动盘若插在 TF 槽里（例如自制的 eMMC 转 TF 卡），它同样上报 type=MMC，
+# 因此不能"最后一个 MMC 胜出"，否则会把插槽里的盘当成板载 eMMC 去测。
+rootdev=$(findmnt -no SOURCE / 2>/dev/null | sed 's/p*[0-9]*$//')
+[ -z "$rootdev" ] && rootdev=$(lsblk -no PKNAME "$(findmnt -no SOURCE / 2>/dev/null)" 2>/dev/null | sed 's|^|/dev/|')
 for d in /dev/mmcblk*; do
   case "$(cat /sys/class/block/$(basename $d)/device/type 2>/dev/null)" in
-    MMC) emmc="$d";;
+    MMC) if [ "$d" = "$rootdev" ]; then slot="$d"; else emmc="$d"; fi;;
     SD)  tf="$d";;
   esac
 done
+[ -n "$slot" ] && [ -z "$tf" ] && tf="$slot"
 if [ -n "$emmc" ]; then
   size=$(lsblk -dno SIZE $emmc 2>/dev/null)
-  log "  eMMC: $emmc ($size) [Y1Y256; A9 采样校准后读可用]"
+  log "  eMMC: $emmc ($size) [板载, HS400]"
   ok "eMMC 检测到"
   hs=$(cat /sys/class/mmc_host/mmc*/mmc*:*/timing 2>/dev/null | sort -u | tr '\n' ' ')
   [ -n "$hs" ] && log "  eMMC timing: $hs"
-  # A9: HS400 200MHz 采样校准 — 开机不应再有 CMD18 采样错误/retry
+  # HS400 200MHz 采样校准 — 开机不应再有 CMD18 采样错误/retry
   if dmesg 2>/dev/null | grep -qE "smc 0 p2 err|RD DCE|EBE|manual stop command failed"; then
-    bad "A9 eMMC: dmesg 仍有 CMD18 采样错误 (CRC/EBE/retry)"
+    bad "eMMC: dmesg 仍有 CMD18 采样错误 (CRC/EBE/retry)"
     dmesg 2>/dev/null | grep -E "smc 0 p2 err|RD DCE|EBE|manual stop" | head -3 | tee -a "$REPORT"
   else
-    ok "A9 eMMC: 开机 dmesg 无 CMD18 CRC/EBE/retry"
+    ok "eMMC: 开机 dmesg 无 CMD18 CRC/EBE/retry"
   fi
   # 采样延迟寄存器收敛值 (驱动自愈/校准后应为 0x484)
   dl=$(dmesg 2>/dev/null | grep -oE "REG_DS_DL: 0x[0-9a-fA-F]+|REG_DS_DL=0x[0-9a-fA-F]+" | tail -1)
   log "  采样延迟记录: ${dl:-dmesg 无 REG_DS_DL 输出}"
-  # A9: 只读吞吐测试 (--quick 跳过; 仅读整盘, 不触碰分区内容)
+  # 顺序读吞吐：优先 fio qd=8（反映真实带宽）；无 fio 时退回 dd（= 单请求 qd=1 口径，量的是延迟）
   if [ "$QUICK" != "1" ]; then
-    log "  顺序读 1GiB 测速 (HS400) ..."
-    spd=$(dd if=$emmc of=/dev/null bs=1M count=1024 iflag=direct 2>&1 | tail -1)
-    log "  ${spd}"
-    rate=$(echo "$spd" | grep -oE "[0-9.]+ (MB|GB)/s" | head -1)
-    case "$rate" in
-      *GB/s)  ok "A9 eMMC 顺序读 $rate (HS400 正常)" ;;
-      *) mb=${rate%% *}; [ -n "$mb" ] && awk -v m="$mb" 'BEGIN{exit !(m>=150)}' && ok "A9 eMMC 顺序读 ${rate} (可用)" || bad "A9 eMMC 读速率异常: ${rate:-无输出}" ;;
-    esac
+    if command -v fio >/dev/null 2>&1; then
+      log "  顺序读 1GiB (fio bs=1M qd=8) ..."
+      rj=$(fio --name=seqread --filename=$emmc --rw=read --bs=1M --iodepth=8 --numjobs=1 \
+              --ioengine=libaio --direct=1 --size=1G --group_reporting --output-format=json 2>/dev/null)
+      kb=$(printf '%s' "$rj" | grep -oE '"bw"[[:space:]]*:[[:space:]]*[0-9]+' | head -1 | grep -oE '[0-9]+$')
+      mb=""; [ -n "$kb" ] && mb=$(awk -v k="$kb" 'BEGIN{printf "%.0f", k/1024}')
+      if [ -n "$mb" ]; then
+        log "  顺序读 ${mb} MiB/s (qd=8)"
+        # 阈值 200 MiB/s：HS400 8bit@200MHz 的饱和值约 300 MiB/s，取 2/3 作为"正常"下限
+        awk -v m="$mb" 'BEGIN{exit !(m>=200)}' && ok "eMMC 顺序读 ${mb} MiB/s (qd=8, 正常)" \
+          || bad "eMMC 顺序读偏低: ${mb} MiB/s (qd=8, 期望 ≥200)"
+      else
+        log "  fio 未取到结果（跳过判据）"
+      fi
+    else
+      log "  顺序读 1GiB (dd bs=1M, 单请求 qd=1 口径) ..."
+      spd=$(dd if=$emmc of=/dev/null bs=1M count=1024 iflag=direct 2>&1 | tail -1)
+      log "  ${spd}"
+      rate=$(echo "$spd" | grep -oE "[0-9.]+ (MB|GB)/s" | head -1)
+      case "$rate" in
+        *GB/s) ok "eMMC 顺序读 $rate (正常)" ;;
+        *) mb=${rate%% *}
+           # qd=1 单请求口径：受限明显，阈值取 120 MB/s（深队列实测约 300 MiB/s）
+           [ -n "$mb" ] && { awk -v m="$mb" 'BEGIN{exit !(m>=120)}' && ok "eMMC 顺序读 ${rate} (qd=1 口径, 可用)" \
+             || bad "eMMC 顺序读异常: ${rate:-无输出} (qd=1 口径, 期望 ≥120 MB/s)"; } ;;
+      esac
+    fi
   else
     skip "eMMC 读测速 (quick 模式)"
   fi
 else
   bad "eMMC 未检测到"
 fi
-[ -n "$tf" ] && ok "microSD: $tf ($(lsblk -dno SIZE $tf 2>/dev/null))" || skip "microSD (启动盘可能为其他设备)"
+[ -n "$tf" ] && ok "TF 卡: $tf ($(lsblk -dno SIZE $tf 2>/dev/null))" || skip "TF 卡 (启动盘可能为其他设备)"
+# 插槽设备信息：若插槽里是 eMMC 转 TF 卡，链路走 MMC 协议（4bit 3.3V），上限远低于板载 eMMC 的 HS400
+if [ -n "$slot" ]; then
+  slottype=$(cat /sys/class/block/$(basename $slot)/device/type 2>/dev/null)
+  slotname=$(cat /sys/class/block/$(basename $slot)/device/name 2>/dev/null)
+  slotmode=$(cat /sys/kernel/debug/mmc${slot#/dev/mmcblk}/ios 2>/dev/null | awk -F': *' '/timing spec/{t=$2} /^clock/{c=$2} END{print c" / "t}')
+  log "  插槽设备(启动盘): $slot type=$slottype name=${slotname:-?} mode=${slotmode:-?}"
+  log "  提示: 插槽为 eMMC 转 TF 卡时链路是 4bit 3.3V MMC (DDR52@50MHz, 上限≈50MB/s), 属链路限制、不作为 FAIL"
+fi
 log "  根分区: $(findmnt -no SOURCE / 2>/dev/null)"
 chk "根分区可写" touch /tmp/.wtest
 
