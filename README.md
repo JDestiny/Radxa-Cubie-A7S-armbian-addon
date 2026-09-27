@@ -76,7 +76,8 @@ radxa-cubie-a7s-armbian-addon/
 ├── usb-gadget/    USB 串口 gadget 脚本
 ├── watchdog/      硬件看门狗启用脚本
 ├── tests/         硬件验证与压测套件（stress.sh + 模块）
-└── tools/         组件获取与辅助说明
+├── tools/         组件获取与辅助说明
+└── AI-DISCLOSURE.md  AI 协助开发声明（工具、分工、贡献者声明方式）
 ```
 
 ## 六、来源与许可
@@ -97,6 +98,10 @@ radxa-cubie-a7s-armbian-addon/
   `gpu/test/`、`ve/`、`tests/` 下的可执行文件为 MIT。
 
 上游 Armbian 项目与本仓库的关系：本仓库不是 Armbian 官方项目，组件由社区维护。
+
+**AI 协助**：本仓库内容在 **AI 编码助手（DeepSeek）**协助下开发——工具与分工、责任归属、
+贡献者如何声明，见 [`AI-DISCLOSURE.md`](AI-DISCLOSURE.md)。简单说：**脚本由 AI 起草、
+人类在真机上验证并负责**，`Signed-off-by` 只由人类签署。
 
 ## 七、说明
 
