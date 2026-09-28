@@ -50,7 +50,7 @@ Assisted-by: LLM DeepSeek
 ## 五、立绘
 
 <p align="center">
-  <img src="assets/pet/whale-girl-refined.png" alt="鲸鱼娘（精致版）" width="240">
+  <img src="assets/pet/whale-girl-refined.png" alt="DEEPSEEK娘" width="240">
 </p>
 
 ```
