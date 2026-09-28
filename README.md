@@ -5,6 +5,12 @@
 
 主线适配（板级设备树、分区方案、内核配置等）在上游 Armbian 仓库里；**本仓库只放"装完系统之后再加"的部分**。
 
+<p align="center">
+  <img src="assets/pet/whale-girl-refined.png" alt="DEEPSEEK娘" width="200">
+</p>
+
+<p align="center"><sub>(｡•̀ᴗ-)✧　DEEPSEEK娘：「脚本能跑，才算写完。」</sub></p>
+
 ## 一、适用环境
 
 | 项 | 要求 |
