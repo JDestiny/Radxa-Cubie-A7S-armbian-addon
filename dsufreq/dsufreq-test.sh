@@ -1,9 +1,8 @@
 #!/bin/bash
-# SPDX-License-Identifier: MIT
-# DSU/L3 调频：受控启用（黑名单 → 手动加载 → 判据 → 提升）
+# B13 — DSU/L3 调频：受控验证（黑名单 → 手动加载 → 判据 → 提升）
 #
 # 背景（2026-09-18）：
-#   内核把 CONFIG_AW_SUNXI_DSUFREQ 编成模块（=m）。原因：该驱动
+#   A 类 0015 把 CONFIG_AW_SUNXI_DSUFREQ 从 =y 改成 =m。原因：该驱动
 #   sunxi-dsufreq.c:487 有一个硬 BUG_ON(1)，而 probe 在 :560 **无条件**调用
 #   dsu_init_freq_table()（不受 CONFIG_AW_SUNXI_DSUFREQ_ADJUST 保护——那个符号
 #   只管 :584-602 的 freq_qos 块）。触发条件是「DSU 最低 OPP 电压 > CPU 最低
@@ -50,7 +49,7 @@ sym_val() {  # $1 = ADJUST|TEST → y / m / n（is not set）/ ?（符号不在 
 
 status() {
   echo "=============================================="
-  echo " DSU/L3 调频（$MOD）状态"
+  echo " B13 DSU/L3 调频（$MOD）状态"
   echo "=============================================="
   echo " ── 1. 内核 config ──"
   if [ ! -r "$CONF" ]; then
@@ -62,12 +61,12 @@ status() {
       printf '   %-22s =%s\n' "CONFIG_AW_SUNXI_DSUFREQ" "$cv"
       case "$cv" in
         m) printf '   %-22s ✅ =m —— 模块形态，probe 不在启动路径上\n' "" ;;
-        y) printf '   %-22s ⚠️ =y —— probe 发生在开机时，请确认本内核已启用该模块配置\n' "" ;;
+        y) printf '   %-22s ⚠️ =y —— probe 发生在开机时，请确认本内核已含 A 类 0015（见该补丁正文）\n' "" ;;
         *) printf '   %-22s ℹ️ 取值既非 m 也非 y\n' "" ;;
       esac
     elif grep -qaE '^# CONFIG_AW_SUNXI_DSUFREQ is not set' "$CONF"; then
       printf '   %-22s 未设置（is not set）\n' "CONFIG_AW_SUNXI_DSUFREQ"
-      printf '   %-22s ⭕ 本内核未启用 dsufreq —— 编译前属正常；需先使用启用了该模块的内核\n' ""
+      printf '   %-22s ⭕ 本内核未启用 dsufreq —— 编译前属正常；需先编译含 A 类 0015 的内核\n' ""
     else
       printf '   %-22s ？该符号不在 config 里（config 可能被裁剪过）\n' "CONFIG_AW_SUNXI_DSUFREQ"
     fi
@@ -78,7 +77,7 @@ status() {
   if modinfo "$MOD" >/dev/null 2>&1; then
     printf '   %s ✅ 存在：%s\n' "$MOD" "$(modinfo -F filename "$MOD" 2>/dev/null)"
   else
-    printf '   %s ⭕ 内核里没有 —— 需先使用启用了该模块的内核\n' "$MOD"
+    printf '   %s ⭕ 内核里没有 —— 需先编译含 A 类 0015 的内核\n' "$MOD"
   fi
 
   echo " ── 3. 黑名单 ──"
@@ -146,7 +145,7 @@ do_blacklist() {
 do_test() {
   need_root test
   echo "=============================================="
-  echo " DSU 调频 —— 受控加载实验"
+  echo " B13 DSU 调频 —— 受控加载实验"
   echo "=============================================="
   echo "[1/3] 前置检查"
   if [ ! -f "$BL" ]; then
@@ -161,7 +160,7 @@ do_test() {
   fi
   echo "  [OK] 模块当前未加载"
   if ! modinfo "$MOD" >/dev/null 2>&1; then
-    echo "  [FAIL] 内核里没有 $MOD 模块（需先使用启用了该模块的内核）"
+    echo "  [FAIL] 内核里没有 $MOD 模块（需先编译含 A 类 0015 的内核）"
     exit 1
   fi
   echo "  [OK] 模块文件存在"
@@ -209,8 +208,8 @@ do_test() {
   if [ "$ok" = 1 ]; then
     echo "   ✅ 实验成功（模块加载 + /sys/class/dsufreq 出现 + 无 BUG）"
     echo "      → 可执行 sudo $0 promote 恢复自动加载；"
-    echo "      → 或把内核配置 CONFIG_AW_SUNXI_DSUFREQ 改回 =y 内建（下次编译生效）。"
-    echo "      当前：scaling_cur_freq=$(tr -d '\n' < "$SYS/scaling_cur_freq" 2>/dev/null)"
+    echo "      → 或把 A 类 0015 改回 =y 随内核内建（下次编译生效）。"
+    echo "      实测：scaling_cur_freq=$(tr -d '\n' < "$SYS/scaling_cur_freq" 2>/dev/null)"
   else
     echo "   ❌ 实验未通过（见上面 [FAIL]）"
     echo "      * 若刚才机器 panic/重启：黑名单已保留 → 重启后系统正常，别再手动加载；"
@@ -224,7 +223,7 @@ do_promote() {
   if [ -f "$BL" ]; then rm -f "$BL" && echo "  [OK] 已删除"; else echo "  [..] 本来就没有"; fi
   echo "[2/2] 之后如何加载（二选一）"
   echo "   a) 保持 =m：模块带 of: alias，udev 会在开机自动加载（删掉黑名单即恢复）；"
-  echo "   b) 把内核配置 CONFIG_AW_SUNXI_DSUFREQ 由 =m 改回 =y，随内核内建（下次编译生效）。"
+  echo "   b) 把 A 类 0015 的 CONFIG_AW_SUNXI_DSUFREQ 由 =m 改回 =y，随内核内建（下次编译生效）。"
   echo "   注：CONFIG_AW_SUNXI_DSUFREQ_ADJUST / _TEST 建议继续保持关闭。"
   status
 }

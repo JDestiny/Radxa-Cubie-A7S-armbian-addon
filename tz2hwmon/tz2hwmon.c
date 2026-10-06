@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: GPL-2.0
 /*
  * tz2hwmon v2 — thermal_zone → hwmon 只读桥接模块 (sensors / btop / htop 可见)
  *

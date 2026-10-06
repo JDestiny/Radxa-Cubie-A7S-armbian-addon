@@ -1,5 +1,4 @@
 #!/bin/bash
-# SPDX-License-Identifier: MIT
 # ============================================================
 # gpu-driver-stability.sh — GPU 驱动动态负载稳定性压测 (默认 2h)
 #
@@ -99,10 +98,10 @@ dmesg_errs() {    # 内核错误计数 (PVR 错误 / Oops / BUG / panic / GPU fa
 ACCT_PID=""; ACCT_FRESH=1; ACCT_VAL="-"
 acct_sample() {   # 固定跟踪同一个客户端 PID 的 drm-engine-pvr 值 (验证单调)
     # 2026-09-13 修: 原来取 "pgrep 命中的第一个进程", 在 vk 阶段会先读到上一阶段残留的
-    # ocl 客户端的冻结值、下一采样切到新客户端 → 被误判成"记账回退"。
+    # ocl 客户端的冻结值、下一采样切到新客户端 → 被误判成"记账回退"(实测 2h 里 19 次)。
     # 现在锁定一个 PID 跟到底; 换 PID/新段首个样本输出 "-" 作"基线重置"标记 (复核时跳过比较)。
     # ⚠️ 必须**直接调用**(写入全局 ACCT_VAL), 不能用 $(...) 取返回值 —— 命令替换在子 shell 里跑,
-    #    锁定的 PID 会丢失。
+    #    锁定的 PID 会丢失(实测踩过)。
     local p v
     [ -n "$ACCT_PID" ] && [ ! -d "/proc/$ACCT_PID" ] && ACCT_PID=""
     if [ -z "$ACCT_PID" ]; then

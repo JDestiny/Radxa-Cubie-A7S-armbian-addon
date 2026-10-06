@@ -34,3 +34,8 @@ ve/testcases/
 *.o
 *.cmd
 *.symvers
+
+# 厂商/上游源码树（体积大，按组件 README 自行获取）
+ve/gst-omx-src/
+ve/gst-omx-1.26-patched/
+npu/official-golden-test/

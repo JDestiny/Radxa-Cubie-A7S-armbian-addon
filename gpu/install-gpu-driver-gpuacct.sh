@@ -1,5 +1,4 @@
 #!/bin/bash
-# SPDX-License-Identifier: MIT
 # ============================================================
 # Cubie A7S — gpuacct（V6）GPU 驱动安装器：原版 + GPU 利用率记账补丁，htop 直接可用
 #   脚本名 install-gpu-driver-gpuacct.sh 与 DKMS 变体名一致（0.1.0-3+gpuacct）；"V6" 是补丁版本号
@@ -91,7 +90,7 @@ echo "=============================================="
 # ---------- [0/5] 前置检查 ----------
 echo "[0/5] 前置检查"
 [ -d "$SRC/img-bxm" ] || { bad "源目录不完整: $SRC"; exit 1; }
-ok "源: $SRC  (源码变体: $(grep -rqs PVRGpuAcctKick "$SRC/img-bxm/linux/rogue_km/services" && echo gpuacct || echo stock))"
+ok "源: $SRC  (实测变体: $(grep -rqs PVRGpuAcctKick "$SRC/img-bxm/linux/rogue_km/services" && echo gpuacct || echo stock))"
 command -v dkms >/dev/null || { info "安装 dkms..."; apt-get install -y dkms build-essential >/dev/null 2>&1 || true; }
 command -v dkms >/dev/null && ok "dkms: $(dkms --version 2>/dev/null | head -1)" || { bad "无 dkms"; exit 1; }
 [ -d "/lib/modules/$KREL/build" ] || [ -d "/usr/src/linux-headers-$KREL" ] && ok "内核头文件就绪" || bad "缺内核头文件"

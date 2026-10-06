@@ -31,7 +31,7 @@
 | [`ve/`](ve/) | 视频编解码（VE） | 全志 cedar 系用户态库与头文件，硬解 / 硬编码可用 |
 | [`camera/`](camera/) | 相机（MIPI-CSI） | 设备树 overlay 安装/启用，以及 ISP 用户态栈（**当前只有 IMX219 可用**） |
 | [`tz2hwmon/`](tz2hwmon/) | 温度桥接 | 把 `thermal_zone` 暴露成 `hwmon`，让 `htop` / `btop` / `sensors` 能读到温度 |
-| [`dsufreq/`](dsufreq/) | DSU / L3 调频 | 集群频率调节的受控启用流程 |
+| ~~[`dsufreq/`](dsufreq/)~~ | ~~DSU / L3 调频~~ | **⚠️ 已废弃（2026-10-06）：不要安装、不要写黑名单**。DSU 动态调频本来正常工作（实测 312↔1274 MHz），所有处置步骤**都不需要**；目录仅保留 `dsufreq-test.sh status` 作只读排障 |
 | [`usb-gadget/`](usb-gadget/) | USB gadget | 把 USB-C OTG 口变成串口设备（PC 侧出现 `/dev/ttyACM0`） |
 | [`watchdog/`](watchdog/) | 硬件看门狗 | 交给 systemd 喂狗，系统挂死时自动复位 |
 | [`tests/`](tests/) | 测试脚本 | 一键硬件验证与压测套件（装完组件后自检用） |
@@ -78,7 +78,7 @@ radxa-cubie-a7s-armbian-addon/
 ├── ve/            VE 用户态库/头文件/配置 + 安装脚本 + 演示程序
 ├── camera/        相机设备树 overlay + ISP 用户态
 ├── tz2hwmon/      温度桥接内核模块（源码 + 预编译）
-├── dsufreq/       DSU/L3 调频受控启用脚本
+├── dsufreq/       ⚠️ 已废弃（仅保留只读排障脚本 status）
 ├── usb-gadget/    USB 串口 gadget 脚本
 ├── watchdog/      硬件看门狗启用脚本
 ├── tests/         硬件验证与压测套件（stress.sh + 模块）

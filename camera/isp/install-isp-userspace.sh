@@ -1,12 +1,11 @@
 #!/bin/bash
-# SPDX-License-Identifier: MIT
 # 相机 ISP / cedarc 用户态栈安装（B 类，camera/isp/）
 #
 # 装什么（两个官方 deb，包内路径已核对，不猜）：
 #   libAWIspApi-isp-602-arm64 1.0.1  →  /usr/lib/aarch64-linux-gnu/{libisp_ini.so,libisp.so,libAWIspApi.so}
 #                                        + /usr/include/{AWIspApi.h,sunxi_camera_v2.h} + /usr/bin/AWISPdemo
 #   libcedarc-dev-2.0.0-arm64 1.0.7  →  12 个新库（libvencoder/libvenc_codec/libvenc_base/…）+ 2 个 demo
-#                                        + /usr/include/*.h（VE 用户态已装的 15 个同版本文件不重复动）
+#                                        + /usr/include/*.h（B6 已装的 15 个同版本文件不重复动）
 #
 # 为什么必须装 libisp_ini.so：
 #   内核驱动 + overlay 只让相机"出图"，**颜色对不对取决于 libisp_ini.so 里有没有该 sensor 的 tuning 档**。
@@ -16,7 +15,7 @@
 # 安全策略（默认不覆盖任何已有的库）：
 #   * 15 个与本机逐字节相同的 cedarc 库 → 跳过（无需动）
 #   * 3 个同名但内容不同（libOmxCore/libOmxVdec/libOmxVenc）→ **默认跳过并告警**，
-#     因为它们属于已验证可用的 VE 硬解栈；确需覆盖时用 --force（会先备份到 /var/backups/camera-isp/）
+#     因为它们属于已验证可用的 B6 VE 硬解栈；确需覆盖时用 --force（会先备份到 /var/backups/camera-isp/）
 #
 # 用法:
 #   sudo $0 install [--isp-only] [--force]   # 默认=ISP 三件套 + cedarc 新增项（不覆盖已有库）
@@ -132,7 +131,7 @@ do_install() {
   ldconfig && echo "  [OK] ldconfig 完成"
   echo
   echo "  结果：安装/更新 $ok 项，跳过 $skip 项（已有或冲突），失败 $fail 项"
-  echo "  ⚠️ 3 个 OmxVdec/OmxVenc/OmxCore 若被跳过属**预期**：它们属于已验证的 VE 硬解栈；"
+  echo "  ⚠️ 3 个 OmxVdec/OmxVenc/OmxCore 若被跳过属**预期**：它们属于已验证的 B6 VE 硬解栈；"
   echo "     确需覆盖请跑 sudo $0 install --force（会先备份到 $BACKUP_ROOT/）"
   echo
   echo "  判成功：sudo $0 --status"
@@ -207,7 +206,7 @@ do_uninstall() {
     echo "[2/2] 无备份需要还原"
   fi
   rm -rf "$STATE"; ldconfig 2>/dev/null
-  echo "  完成（删了 $n 项）。原有的 VE 库未受影响。"
+  echo "  完成（删了 $n 项）。B6 原有的 VE 库未受影响。"
 }
 
 case "${1:-}" in

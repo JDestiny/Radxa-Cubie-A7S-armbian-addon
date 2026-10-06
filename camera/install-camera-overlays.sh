@@ -1,6 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: MIT
-# Radxa 相机（MIPI-CSI）overlay：安装 / 启用 / 停用 / 状态
+# B12 — Radxa 相机（MIPI-CSI）overlay：安装 / 启用 / 停用 / 状态
 #
 # 背景（2026-09-18）：
 #   官方 r6 镜像支持三款 Radxa 相机 —— 8M(IMX219)、13M(IMX214)、4K(IMX415)，
@@ -19,7 +18,7 @@
 #   相机是可选插拔件，而且插上后管线要提速（csi_top/csi_isp 600/540→704 MHz）。
 #   做成 overlay 才能保证"不插相机时启动与厂商默认完全一致"。
 #
-# 前置条件：
+# 前置条件（A 类，见 A-编译期修复/README.md）：
 #   0012  vind0 三路 supply   —— 否则 sunxi-vin-media 直接 probe 失败(-1)
 #   IMX219                    —— **本仓库当前唯一支持的相机**，无需任何补丁：
 #                                CONFIG_SENSOR_IMX219=m 本来就在基线 config 里，驱动/Kconfig/Makefile 接线也在树里
@@ -55,7 +54,7 @@ DTBO_DIR=/boot/overlay-user
 ENV=/boot/armbianEnv.txt
 KEY=user_overlays
 CAMS="imx219 imx214 imx415"
-# camera -> (sensor 驱动模块名, 所需内核补丁编号)
+# camera -> (sensor 驱动模块名, 需要的 A 类补丁编号)
 mod_of() { case "$1" in imx219) echo imx219;; imx214) echo imx214;; imx415) echo imx415_mipi;; esac; }
 need_of() {
   case "$1" in
@@ -179,15 +178,15 @@ do_enable() {
   echo "[4/4] 让 sensor 驱动开机自加载（否则 vin 按 sensor0_mname 找不到 sensor）"
   for c in "$@"; do
     local m; m="$(mod_of "$c")"
-    printf '# Radxa camera %s\n%s\n' "$c" "$m" > "/etc/modules-load.d/camera-$c.conf"
+    printf '# B12 Radxa camera %s\n%s\n' "$c" "$m" > "/etc/modules-load.d/camera-$c.conf"
     if modinfo "$m" >/dev/null 2>&1; then
       echo "  [OK] /etc/modules-load.d/camera-$c.conf → $m"
     else
-      echo "  [WARN] 当前内核里找不到模块 $m —— 请确认所需内核补丁（$(need_of "$c")）已编译进内核"
+      echo "  [WARN] 当前内核里找不到模块 $m —— 请确认 A 类补丁（$(need_of "$c")）已编译进新内核"
     fi
   done
   echo
-  echo "  ⚠️ 需**重启**才生效。重启后按下面判据检查："
+  echo "  ⚠️ 需**重启**才生效。重启后按下面判据验收："
   echo "     sudo $0 status"
 }
 
@@ -206,7 +205,7 @@ do_disable() {
 
 do_status() {
   echo "=============================================="
-  echo " Radxa 相机 overlay 状态"
+  echo " B12 Radxa 相机 overlay 状态"
   echo "=============================================="
   echo " ── 1. dtbo 文件 ──"
   for c in $CAMS; do
@@ -240,7 +239,7 @@ do_status() {
     elif [ "$c" = imx219 ]; then
       printf '   %-7s ❌ %s 不可用 —— 相机是本仓库唯一支持型号，请检查内核 config/模块\n' "$c" "$(mod_of "$c")"
     else
-      printf '   %-7s ❌ %s 不可用（该传感器驱动未适配当前内核）\n' "$c" "$(mod_of "$c")"
+      printf '   %-7s ❌ %s 不可用（A 类 0017/0018 已于 2026-09-21 退役：驱动未适配 6.6）\n' "$c" "$(mod_of "$c")"
     fi
   done
   echo " ── 5. 当前运行内核里是否真的叠加上去了 ──"
@@ -260,7 +259,7 @@ do_status() {
     echo "   ⭕ 未启用任何相机 overlay（开机走厂商默认 dtb）"
   elif grep -q "okay" "$csi" 2>/dev/null; then
     echo "   ✅ overlay 已生效（csi1=okay），配置的相机: $cur"
-    echo "      详见本仓库 camera/README.md"
+    echo "      完整验收见 B-安装后配置/README.md「十、B12 Radxa 相机（MIPI-CSI）overlay」"
   else
     echo "   ⚠️ armbianEnv.txt 已配置 [$cur]，但当前内核里 csi1 还不是 okay"
     echo "      → 改了 armbianEnv.txt 后需要重启；若已重启仍如此，看 dmesg | grep -iE 'vin|csi|overlay'"

@@ -1,6 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: MIT
-# 硬件看门狗（systemd 负责喂狗）
+# B11 — 硬件看门狗（systemd 负责喂狗）
 #
 # 背景（2026-09-18）：
 #   本板 `/dev/watchdog0`（sunxi-wdt）本来没有任何服务喂它，而内核配置里
@@ -36,7 +35,7 @@ cur_setting() { grep -aE "^RuntimeWatchdogSec=" "$CONF" 2>/dev/null | tail -1 | 
 
 status() {
   echo "=============================================="
-  echo " 硬件看门狗状态"
+  echo " B11 硬件看门狗状态"
   echo "=============================================="
   printf '  配置项         : RuntimeWatchdogSec=%s\n' "$(cur_setting || echo '(未设置=off)')"
   printf '  看门狗设备     : %s\n' "$([ -e $WDT ] && echo "$WDT (sunxi-wdt, 硬件上限 ${TIMEOUT}s)" || echo '不存在')"

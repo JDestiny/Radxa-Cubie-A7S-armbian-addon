@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <stdio.h>

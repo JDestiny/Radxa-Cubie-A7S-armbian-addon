@@ -1,9 +1,8 @@
 #!/bin/bash
-# SPDX-License-Identifier: MIT
-# USB gadget：把 OTG 口变成 USB 串口设备（PC 侧出现 /dev/ttyACM0）
+# B10 — USB gadget：把 OTG 口变成 USB 串口设备（PC 侧出现 /dev/ttyACM0）
 #
 # 背景（2026-09-18）：
-#   板级设备树已让 usbc0 进入 OTG 模式、UDC (4100000.udc-controller) 注册成功，
+#   A2 补丁已让 usbc0 进入 OTG 模式、UDC (4100000.udc-controller) 注册成功，
 #   但内核只提供"能力"，串口/网卡/存储这些**具体形态必须由用户态写 configfs 决定**，
 #   所以此前 OTG 口只能当 host（插 U 盘/键鼠），不能当 device。
 #   本脚本用 configfs 配一个 ACM(CDC serial) gadget → 板子插到 PC 上会枚举出串口，
@@ -27,7 +26,7 @@ need_root() { [ "$(id -u)" = 0 ] || { echo "需要 root: sudo $0 $*"; exit 1; };
 
 status() {
   echo "=============================================="
-  echo " USB gadget（ACM 串口）状态"
+  echo " B10 USB gadget（ACM 串口）状态"
   echo "=============================================="
   printf '  gadget 目录   : %s\n' "$([ -d "$G" ] && echo "存在 ($G)" || echo 未配置)"
   printf '  绑定 UDC      : %s\n' "$([ -d "$G" ] && cat "$G/UDC" 2>/dev/null || echo -)"

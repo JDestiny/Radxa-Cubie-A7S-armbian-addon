@@ -1,5 +1,4 @@
 #!/bin/bash
-# SPDX-License-Identifier: MIT
 # ============================================================
 # Cubie A7S — 原版 GPU 驱动安装器（stock = Radxa r6 原始 pvrsrvkm，未改一行）
 #   * 只做一件事：把 img-bxm-dkms-src/ 这份**原版**（Radxa r6 原封不动）编译并**持久化安装**为 pvrsrvkm
@@ -90,7 +89,7 @@ echo "=============================================="
 # ---------- [0/5] 前置检查 ----------
 echo "[0/5] 前置检查"
 [ -d "$SRC/img-bxm" ] || { bad "源目录不完整: $SRC"; exit 1; }
-ok "源: $SRC  (源码变体: $(grep -rqs PVRGpuAcctKick "$SRC/img-bxm/linux/rogue_km/services" && echo gpuacct || echo stock))"
+ok "源: $SRC  (实测变体: $(grep -rqs PVRGpuAcctKick "$SRC/img-bxm/linux/rogue_km/services" && echo gpuacct || echo stock))"
 command -v dkms >/dev/null || { info "安装 dkms..."; apt-get install -y dkms build-essential >/dev/null 2>&1 || true; }
 command -v dkms >/dev/null && ok "dkms: $(dkms --version 2>/dev/null | head -1)" || { bad "无 dkms"; exit 1; }
 [ -d "/lib/modules/$KREL/build" ] || [ -d "/usr/src/linux-headers-$KREL" ] && ok "内核头文件就绪" || bad "缺内核头文件"

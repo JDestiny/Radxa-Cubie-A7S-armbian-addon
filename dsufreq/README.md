@@ -128,3 +128,18 @@ sudo ./dsufreq-test.sh promote
   - 禁止自动加载：`echo 'blacklist sunxi-dsufreq' | sudo tee /etc/modprobe.d/blacklist-sunxi-dsufreq.conf`
   - 恢复自动加载：`sudo rm -f /etc/modprobe.d/blacklist-sunxi-dsufreq.conf`
 - 脚本不改内核配置、`/boot` 或任何启动文件，所以"回滚"只需处理黑名单与模块的加载状态。
+
+---
+
+## ⚠️ 2026-10-06 实测更正：**默认不要再黑名单**
+
+先前建议（`sudo ./dsufreq-test.sh blacklist`）基于"DSU 的 OPP 全被 regulator 拒绝、调频无收益"的判断 —— **该判断已被实测推翻**：
+
+- DSU **动态调频本来就在工作**：`/sys/class/dsufreq/scaling_available_frequencies` 显示本片（vf0500）9 档
+  `312/598/780/910/1066/1144/1222/1248/1274 MHz`（电压 800→950 mV，与 DT `opp-microvolt-26m-vf0500` 逐档吻合）；
+- 8 核满载实测 DSU 升至 **1274 MHz**（本片最高档），压力结束后回落 **1040 MHz**；`clk_summary` 显示 consumer 为 `8860000.dsufreq`；
+- 被内核拒绝的 20 档（288…1352 MHz）**正是本片 vf0500 列为 0 的档** → 属设计行为；
+- 多次加载/卸载、满载运行均**无 `BUG_ON`**。
+
+**结论**：`blacklist` 子命令**仅作排障手段保留**，安装流程中**不要默认调用**；
+若已写入黑名单，执行 `sudo rm /etc/modprobe.d/blacklist-sunxi-dsufreq.conf` 即可恢复开机自动加载（本板已移除）。

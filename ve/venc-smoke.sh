@@ -1,15 +1,15 @@
 #!/bin/bash
-# SPDX-License-Identifier: MIT
-# VE 硬件 H.264 编码冒烟测试（无需相机）
+# B6b — VE 硬件 H.264 编码冒烟测试（无需相机）
 #
-# 背景：
+# 背景（2026-09-19 实测发现）：
 #   Radxa issue radxa-build/radxa-a733#35 报「A733 的 VE 编码器不可用、cedar_dev_ve2 中断永不触发」，
 #   社区则反证「编码高度必须是 16 的倍数」（他复现用的是 1920x1080，%16=8）。
 #   **在我们的系统上（Armbian 6.6.98 + libcedarc 1.0.7）两者都不成立**：
 #   1920x1080 与 1920x1088 **都能编码**，`cedar_dev_ve2` 中断都正常递增，输出是合法 H.264 基本流
 #   （SPS+PPS+IDR+P，High Profile / Level 5.1）。见
+#   C-实测与调查/编译前基线-20260919/重启后核验报告.md
 #
-# 前置：已装 VE 用户态库（ve/install-ve.sh），且系统里有 /usr/bin/vencoderdemo
+# 前置：libcedarc（B6 已装 18 库；本脚本需要 /usr/bin/vencoderdemo）
 # 用法: sudo $0 [宽x高]    默认 1920x1088
 set -u
 WH="${1:-1920x1088}"
