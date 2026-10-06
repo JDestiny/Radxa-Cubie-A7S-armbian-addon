@@ -1,0 +1,19 @@
+# 文本文件统一 LF（对齐 Armbian 上游习惯）
+* text=auto eol=lf
+
+# 脚本与补丁：强制 LF，避免在 Windows 上被改成 CRLF
+*.sh      text eol=lf
+*.patch   text eol=lf
+*.fex     text eol=lf
+*.md      text eol=lf
+Makefile  text eol=lf
+*.mk      text eol=lf
+
+# 二进制资产：不做行尾转换
+*.ko      binary
+*.so*     binary
+*.deb     binary
+*.blob    binary
+*.dtb     binary
+*.spv     binary
+*.bin     binary

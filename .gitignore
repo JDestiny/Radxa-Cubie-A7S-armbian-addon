@@ -25,3 +25,12 @@ ve/testcases/
 # 编辑器/系统文件
 .DS_Store
 *.swp
+
+# 运行时缓存（补：任意层级的 .shaders/，此前只忽略了 tests/.../gpu/.shaders/）
+**/.shaders/
+
+# 内核模块编译产物（保留 .ko 只在确有分发需要时显式 add）
+*.ko
+*.o
+*.cmd
+*.symvers
