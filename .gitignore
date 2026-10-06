@@ -36,6 +36,5 @@ ve/testcases/
 *.symvers
 
 # 厂商/上游源码树（体积大，按组件 README 自行获取）
+# ve/gst-omx-src/ 有上游来源 → 不入库，获取方式见 ve/SOURCE.md
 ve/gst-omx-src/
-ve/gst-omx-1.26-patched/
-npu/official-golden-test/
