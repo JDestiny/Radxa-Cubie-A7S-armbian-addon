@@ -34,7 +34,6 @@
 | ~~[`dsufreq/`](dsufreq/)~~ | ~~DSU / L3 调频~~ | **⚠️ 已废弃（2026-10-06）：不要安装、不要写黑名单**。DSU 动态调频本来正常工作（实测 312↔1274 MHz），所有处置步骤**都不需要**；目录仅保留 `dsufreq-test.sh status` 作只读排障 |
 | [`usb-gadget/`](usb-gadget/) | USB gadget | 把 USB-C OTG 口变成串口设备（PC 侧出现 `/dev/ttyACM0`） |
 | [`watchdog/`](watchdog/) | 硬件看门狗 | 交给 systemd 喂狗，系统挂死时自动复位 |
-| [`tests/`](tests/) | 测试脚本 | 一键硬件验证与压测套件（装完组件后自检用） |
 
 每个目录下都有一份 `README.md`，写明**前置条件、安装步骤、验证方法与卸载/回滚**。
 
@@ -81,7 +80,6 @@ radxa-cubie-a7s-armbian-addon/
 ├── dsufreq/       ⚠️ 已废弃（仅保留只读排障脚本 status）
 ├── usb-gadget/    USB 串口 gadget 脚本
 ├── watchdog/      硬件看门狗启用脚本
-├── tests/         硬件验证与压测套件（stress.sh + 模块）
 ├── tools/         组件获取与辅助说明
 └── AI-DISCLOSURE.md  AI 协助开发声明（工具、分工、贡献者声明方式）
 ```
@@ -92,7 +90,7 @@ radxa-cubie-a7s-armbian-addon/
 
 | 范围 | 授权 | 为什么这么分 |
 |---|---|---|
-| 安装脚本、文档，以及**用户态程序**（`ve/`、`gpu/test/`、`tests/`） | **MIT**<br>（全文见 [`LICENSE`](LICENSE)） | 这些程序要**动态链接厂商闭源库**（`libvdecoder.so`、`libEGL.so.1`、`libOpenCL.so.1` 等）。GPL-2.0 第 7 节不允许分发"GPL 程序 + 与之不兼容的专有库"这种组合，而本仓库恰恰会发布这些编译好的程序；MIT 没有这个限制。MIT 同时也能被 GPL-2.0 的项目（如 Armbian）直接吸收，两个方向都不会卡住 |
+| 安装脚本、文档，以及**用户态程序**（`ve/` 等） | **MIT**<br>（全文见 [`LICENSE`](LICENSE)） | 这些程序要**动态链接厂商闭源库**（`libvdecoder.so`、`libEGL.so.1`、`libOpenCL.so.1` 等）。GPL-2.0 第 7 节不允许分发"GPL 程序 + 与之不兼容的专有库"这种组合，而本仓库恰恰会发布这些编译好的程序；MIT 没有这个限制。MIT 同时也能被 GPL-2.0 的项目（如 Armbian）直接吸收，两个方向都不会卡住 |
 | **内核模块** `tz2hwmon/` 与**内核驱动补丁** `gpu/patches/` | **GPL-2.0-only**<br>（全文见 [`LICENSE-GPL-2.0-only`](LICENSE-GPL-2.0-only)） | Linux 内核是 GPL-2.0-only；该补丁修改的是 IMG 以 GPL v2 发布的内核驱动，属衍生作品，必须同为 GPL-2.0 |
 
 另外两类内容不适用上述授权：
@@ -101,7 +99,7 @@ radxa-cubie-a7s-armbian-addon/
   来自板卡厂商官方镜像或其官方发布物，版权归各自权利人，随附只为便于安装，详见
   [`THIRD-PARTY.md`](THIRD-PARTY.md)；
 - 本仓库**自行编译**的产物与其源码同授权：`tz2hwmon/tz2hwmon.ko` 为 GPL-2.0-only，
-  `gpu/test/`、`ve/`、`tests/` 下的可执行文件为 MIT。
+  `ve/` 下的库与用户态程序为 MIT。
 
 上游 Armbian 项目与本仓库的关系：本仓库不是 Armbian 官方项目，组件由社区维护。
 
