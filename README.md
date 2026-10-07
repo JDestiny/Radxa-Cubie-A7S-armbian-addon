@@ -147,3 +147,18 @@ radxa-cubie-a7s-armbian-addon/
 
 > 上面标注"未声明许可"的仓库，我们没有收录其内容，只在文档中给出获取方式；
 > 随附的厂商二进制一律以其原始发布物的条款为准。
+
+---
+
+## 友情链接
+
+同为 **Allwinner A733（`sun60iw2`）** 平台上的平行工作，各有独到之处，推荐一并阅读：
+
+| 项目 | 内容 |
+|---|---|
+| [**ayiejosh/a733-powervr-fex**](https://github.com/ayiejosh/a733-powervr-fex) | **Radxa Cubie A7A/A7S** · Debian 13 + kernel 6.6 BSP：PowerVR **BXM-4-64** 深度 bring-up —— **DRM-PRIME 内核补丁**、**zink**、**DXVK/D3D**、**Hangover 跑 Windows 应用**、**FEX-Emu/box64**，并附详细的 findings 与 benchmark 文档（含 **GPU 时钟实测天花板 1104 MHz**、**供电欠压** 等一手结论）。 |
+| [**davidhfrankelcodes/pvr-a733-armbian**](https://github.com/davidhfrankelcodes/pvr-a733-armbian) | 把上述配方移植到 **Armbian**（Orange Pi Zero 3W，同 SoC），含完整 **`ARMBIAN-REPLICATION.md`**；独家提供 **`gcc15-stringop-overread-fix.patch`**（GCC 15 下 `pvrsrvkm` 编译修复）与 **`vk_layer_pvr_strip.c`**（zink 所需的 Vulkan 特性伪造层）。 |
+| [**skamagedon/a733-zero3**](https://github.com/skamagedon/a733-zero3) | A733（Zero 3W）早期的 **VE 视频引擎/硬解** 探索，本仓库 VE 组件的方案参考来源之一。 |
+
+> 本仓库的组件**独立开发**（GPU 来自 Radxa 官方 BSP r6 镜像，其余为本项目自研），
+> 未直接引用上述项目的代码；登记于此便于使用者横向对照。若将来引用其代码，将按其许可登记到 `THIRD-PARTY.md`。
