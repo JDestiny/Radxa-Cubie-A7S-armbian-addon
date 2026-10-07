@@ -1,8 +1,0 @@
-[network]
-yolov5.nb
-[input]
-input_1_3_640_640.bin
-[golden]
-output0.bin
-output1.bin
-output2.bin
