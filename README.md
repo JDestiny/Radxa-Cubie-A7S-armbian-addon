@@ -170,6 +170,7 @@ radxa-cubie-a7s-armbian-addon/
 |---|---|
 | [petayyyy/a733_npu_driver](https://github.com/petayyyy/a733_npu_driver) | A733 NPU（Vivante VIP9000）跑 LLM/VLM 实测：视觉/CNN 加速器，小模型 21/8 tok/s，非 Qwen 级；推荐 NPU 视觉 + CPU `llama.cpp` 混合 |
 | [MaverickLong/Radxa-A733-NPU-Unified-Driver-Support-Package](https://github.com/MaverickLong/Radxa-A733-NPU-Unified-Driver-Support-Package) | A733 NPU **统一驱动支持包**（社区维护）|
+| [sog777/orange-pi-zero-3w-rapidocr-npu](https://github.com/sog777/orange-pi-zero-3w-rapidocr-npu) | **NPU 实际应用范例**：在 Orange Pi Zero 3W（同 SoC）上用 A733 NPU 跑 **RapidOCR**（文字识别）—— 从模型转换到板端推理的完整可用流程，可作为把 NPU 用于真实业务的起点。 |
 | [MaverickLong/MLIR-TIM-VX](https://github.com/MaverickLong/MLIR-TIM-VX) | 面向 VeriSilicon **TIM-VX / VIP** 的 MLIR 编译路径 |
 
 ### 三、板级系统与构建（平行工作）
