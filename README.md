@@ -152,15 +152,51 @@ radxa-cubie-a7s-armbian-addon/
 
 ## 友情链接
 
-同为 **Allwinner A733（`sun60iw2`）** 平台上的平行工作，各有独到之处，推荐一并阅读：
+同平台（**Allwinner A733 / `sun60iw2`**，Cubie A7A/A7S/A7Z 等）的平行工作与上游来源，
+按用途分组；**本仓库组件独立开发，未直接引用其代码**，登记于此便于横向对照。
+若将来引用其代码，将按其许可登记到 `THIRD-PARTY.md`。
+
+### 一、GPU / 图形（PowerVR BXM-4-64）
 
 | 项目 | 内容 |
 |---|---|
-| [**ayiejosh/a733-powervr-fex**](https://github.com/ayiejosh/a733-powervr-fex) | **Radxa Cubie A7A/A7S** · Debian 13 + kernel 6.6 BSP：PowerVR **BXM-4-64** 深度 bring-up —— **DRM-PRIME 内核补丁**、**zink**、**DXVK/D3D**、**Hangover 跑 Windows 应用**、**FEX-Emu/box64**，并附详细的 findings 与 benchmark 文档（含 **GPU 时钟实测天花板 1104 MHz**、**供电欠压** 等一手结论）。 |
-| [**davidhfrankelcodes/pvr-a733-armbian**](https://github.com/davidhfrankelcodes/pvr-a733-armbian) | 把上述配方移植到 **Armbian**（Orange Pi Zero 3W，同 SoC），含完整 **`ARMBIAN-REPLICATION.md`**；独家提供 **`gcc15-stringop-overread-fix.patch`**（GCC 15 下 `pvrsrvkm` 编译修复）与 **`vk_layer_pvr_strip.c`**（zink 所需的 Vulkan 特性伪造层）。 |
-| [**petayyyy/a733_npu_driver**](https://github.com/petayyyy/a733_npu_driver) | A733 **NPU（Vivante VIP9000，~3 TOPS）** 跑 LLM/VLM 的实测探索：结论明确 —— **它是视觉/CNN 加速器，也能跑小模型**（SmolLM2-135M/360M 实测 21 / 8 tok/s），**但不是 Qwen 级 LLM 加速器**；推荐**混合路径**（NPU 做视觉 + CPU `llama.cpp` 跑大模型）。含工具链、文档与检查脚本。 |
-| [**Incipiens/OrangePiZero3W-GPU-VPU**](https://github.com/Incipiens/OrangePiZero3W-GPU-VPU) | **Orange Pi Zero 3W**（同 SoC）的 **GPU/VPU 镜像构建器**：只放脚本、**不含任何专有二进制**（"files come straight out of the Radxa image" —— 与本仓库同一来源思路），把 Radxa 的用户态移植到 OPi 镜像上（Vulkan/GLES/OpenCL + `pvrsrvkm` 针对 `6.6.98-sun60iw2` 重建）。 |
-| [**skamagedon/a733-zero3**](https://github.com/skamagedon/a733-zero3) | A733（Zero 3W）早期的 **VE 视频引擎/硬解** 探索，本仓库 VE 组件的方案参考来源之一。 |
+| [ayiejosh/a733-powervr-fex](https://github.com/ayiejosh/a733-powervr-fex) | Cubie A7A/A7S · trixie + kernel 6.6 BSP：DRM-PRIME 补丁 / zink / DXVK / Hangover / FEX；含 **GPU 时钟天花板 1104 MHz**、**供电欠压** 等一手结论 |
+| [davidhfrankelcodes/pvr-a733-armbian](https://github.com/davidhfrankelcodes/pvr-a733-armbian) | 上述配方的 Armbian 移植（Orange Pi Zero 3W）+ `gcc15-stringop-overread-fix.patch` + `vk_layer_pvr_strip.c` |
+| [Incipiens/OrangePiZero3W-GPU-VPU](https://github.com/Incipiens/OrangePiZero3W-GPU-VPU) | OPi Zero 3W 的 GPU/VPU **镜像构建器**：只放脚本、不含专有二进制（用户态取自 Radxa 镜像 —— 与本仓库同一来源思路）|
 
-> 本仓库的组件**独立开发**（GPU 来自 Radxa 官方 BSP r6 镜像，其余为本项目自研），
-> 未直接引用上述项目的代码；登记于此便于使用者横向对照。若将来引用其代码，将按其许可登记到 `THIRD-PARTY.md`。
+### 二、NPU / AI
+
+| 项目 | 内容 |
+|---|---|
+| [petayyyy/a733_npu_driver](https://github.com/petayyyy/a733_npu_driver) | A733 NPU（Vivante VIP9000）跑 LLM/VLM 实测：视觉/CNN 加速器，小模型 21/8 tok/s，非 Qwen 级；推荐 NPU 视觉 + CPU `llama.cpp` 混合 |
+| [MaverickLong/Radxa-A733-NPU-Unified-Driver-Support-Package](https://github.com/MaverickLong/Radxa-A733-NPU-Unified-Driver-Support-Package) | A733 NPU **统一驱动支持包**（社区维护）|
+| [MaverickLong/MLIR-TIM-VX](https://github.com/MaverickLong/MLIR-TIM-VX) | 面向 VeriSilicon **TIM-VX / VIP** 的 MLIR 编译路径 |
+
+### 三、板级系统与构建（平行工作）
+
+| 项目 | 内容 |
+|---|---|
+| [NickAlilovic/build](https://github.com/NickAlilovic/build/tree/Radxa-A7A)（`Radxa-A7A` 分支）| **Cubie A7A/A7Z 的 Armbian BSP 构建**（论坛主推方案，含预编译 release）|
+| [DockSeed/a7s-build](https://github.com/DockSeed/a7s-build) | **Cubie A7S** 构建（与本项目同板型）|
+| [cuihuir/radxa-a7z-debian12](https://github.com/cuihuir/radxa-a7z-debian12) | Radxa A7Z 的 Debian 12 集成 |
+| [parker-int64/sun60i-a733-dtoverlays](https://github.com/parker-int64/sun60i-a733-dtoverlays) | A733 **设备树 overlays** 集合 |
+| [vehoelite/edk2-a733](https://github.com/vehoelite/edk2-a733) | A733 的 **EDK2/UEFI** 固件尝试 |
+| [skamagedon/a733-zero3](https://github.com/skamagedon/a733-zero3) | A733（Zero 3W）早期 **VE 硬解**探索 —— 本仓库 VE 方案的参考来源之一 |
+
+### 四、官方源码与包（本项目组件的上游来源）
+
+| 项目 | 内容 |
+|---|---|
+| [radxa/allwinner-bsp](https://github.com/radxa/allwinner-bsp) | **Radxa 官方全志 BSP** —— 本仓库 GPU（`pvrsrvkm` + 用户态）与 VE 组件的**直接来源**（r6 镜像）|
+| [radxa/allwinner-device](https://github.com/radxa/allwinner-device) · [radxa-build/radxa-a733](https://github.com/radxa-build/radxa-a733) | 板级设备树与官方构建配置 |
+| [radxa-pkg/aw-drivers-dkms](https://github.com/radxa-pkg/aw-drivers-dkms) · [radxa-pkg/u-boot-aw2501](https://github.com/radxa-pkg/u-boot-aw2501) | 官方 DKMS 驱动包与 U-Boot 包 |
+| [alexcaoys/allwinner-bsp](https://github.com/alexcaoys/allwinner-bsp) | 全志 BSP 的社区镜像 |
+| [armbian/build](https://github.com/armbian/build) | **本板级支持的提交目标（上游）** |
+
+### 五、资料与讨论
+
+| 链接 | 内容 |
+|---|---|
+| [Armbian 论坛：Radxa Cubie A7A/A7Z - Allwinner a733](https://forum.armbian.com/topic/56130-radxa-cubie-a7aa7z-allwinner-a733/) | 本平台最活跃的讨论帖（7 页）：构建、KVM、外设、散热等 |
+| [Radxa 论坛：extreme throttling on A733](https://forum.radxa.com/t/extreme-throttling-introduced-on-a733/30688/4) · [A7A hardware virtualization](https://forum.radxa.com/t/a7a-harware-virtualization/29745) · [hardware decoding not enabled](https://forum.radxa.com/t/hardware-decoding-for-video-not-enabled-on-a7a/29836/9) · [SATA support](https://forum.radxa.com/t/radxa-cubie-a7a-sata-support/29154) | 与本项目测试项直接相关的官方论坛专题（降频/虚拟化/硬解/SATA）|
+| [全志 A733 硬件文档（gitlab.com/tina5.0_aiot）](https://gitlab.com/tina5.0_aiot/product/docs/-/blob/product-aiot-stable/A733/Hardware) | 全志官方 A733 硬件文档仓库 |
