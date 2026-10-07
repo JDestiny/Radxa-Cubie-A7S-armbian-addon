@@ -158,6 +158,8 @@ radxa-cubie-a7s-armbian-addon/
 |---|---|
 | [**ayiejosh/a733-powervr-fex**](https://github.com/ayiejosh/a733-powervr-fex) | **Radxa Cubie A7A/A7S** · Debian 13 + kernel 6.6 BSP：PowerVR **BXM-4-64** 深度 bring-up —— **DRM-PRIME 内核补丁**、**zink**、**DXVK/D3D**、**Hangover 跑 Windows 应用**、**FEX-Emu/box64**，并附详细的 findings 与 benchmark 文档（含 **GPU 时钟实测天花板 1104 MHz**、**供电欠压** 等一手结论）。 |
 | [**davidhfrankelcodes/pvr-a733-armbian**](https://github.com/davidhfrankelcodes/pvr-a733-armbian) | 把上述配方移植到 **Armbian**（Orange Pi Zero 3W，同 SoC），含完整 **`ARMBIAN-REPLICATION.md`**；独家提供 **`gcc15-stringop-overread-fix.patch`**（GCC 15 下 `pvrsrvkm` 编译修复）与 **`vk_layer_pvr_strip.c`**（zink 所需的 Vulkan 特性伪造层）。 |
+| [**petayyyy/a733_npu_driver**](https://github.com/petayyyy/a733_npu_driver) | A733 **NPU（Vivante VIP9000，~3 TOPS）** 跑 LLM/VLM 的实测探索：结论明确 —— **它是视觉/CNN 加速器，也能跑小模型**（SmolLM2-135M/360M 实测 21 / 8 tok/s），**但不是 Qwen 级 LLM 加速器**；推荐**混合路径**（NPU 做视觉 + CPU `llama.cpp` 跑大模型）。含工具链、文档与检查脚本。 |
+| [**Incipiens/OrangePiZero3W-GPU-VPU**](https://github.com/Incipiens/OrangePiZero3W-GPU-VPU) | **Orange Pi Zero 3W**（同 SoC）的 **GPU/VPU 镜像构建器**：只放脚本、**不含任何专有二进制**（"files come straight out of the Radxa image" —— 与本仓库同一来源思路），把 Radxa 的用户态移植到 OPi 镜像上（Vulkan/GLES/OpenCL + `pvrsrvkm` 针对 `6.6.98-sun60iw2` 重建）。 |
 | [**skamagedon/a733-zero3**](https://github.com/skamagedon/a733-zero3) | A733（Zero 3W）早期的 **VE 视频引擎/硬解** 探索，本仓库 VE 组件的方案参考来源之一。 |
 
 > 本仓库的组件**独立开发**（GPU 来自 Radxa 官方 BSP r6 镜像，其余为本项目自研），
