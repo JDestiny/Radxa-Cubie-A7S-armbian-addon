@@ -6,7 +6,7 @@ BASE="$(dirname "$(readlink -f "$0")")"
 FAIL=0
 
 echo "=============================================="
-echo " [1/4] 检查 NPU 内核驱动 (vipcore)"
+echo " [1/5] 检查 NPU 内核驱动 (vipcore)"
 echo "=============================================="
 if lsmod | grep -q vipcore && [ -e /dev/vipcore ]; then
     echo "  [OK] vipcore 已加载, /dev/vipcore 存在"
@@ -23,7 +23,7 @@ else
 fi
 
 echo "=============================================="
-echo " [2/4] 安装中间件 (libNBGlinker/libVIPhal v2.0)"
+echo " [2/5] 安装中间件 (libNBGlinker/libVIPhal v2.0)"
 echo "=============================================="
 LIBDIR="$BASE/ai-sdk/viplite-tina/lib/aarch64-none-linux-gnu/v2.0"
 if [ -f "$LIBDIR/libNBGlinker.so" ] && [ -f "$LIBDIR/libVIPhal.so" ]; then
@@ -35,7 +35,7 @@ else
 fi
 
 echo "=============================================="
-echo " [3/4] 安装 vpm_run 工具"
+echo " [3/5] 安装 vpm_run 工具"
 echo "=============================================="
 if [ -x "$BASE/ai-sdk/examples/vpm_run/vpm_run" ]; then
     install -m755 "$BASE/ai-sdk/examples/vpm_run/vpm_run" /usr/local/bin/vpm_run
@@ -48,7 +48,7 @@ else
 fi
 
 echo "=============================================="
-echo " [4/4] 官方 golden 验证 (yolov5.nb)"
+echo " [4/5] 官方 golden 验证 (yolov5.nb)"
 echo "=============================================="
 GOLD="$BASE/official-golden-test"
 if [ -f "$GOLD/yolov5.nb" ] && [ -f "$GOLD/sample.txt" ]; then
@@ -71,6 +71,26 @@ if [ -f "$GOLD/yolov5.nb" ] && [ -f "$GOLD/sample.txt" ]; then
 else
     echo "  [..] golden 测试文件缺失, 跳过 (不影响安装)"
 fi
+
+
+echo "=============================================="
+echo " [5/5] 降低 NPU 日志刷屏 (sysctl.d)"
+echo "=============================================="
+# NPU 驱动 (vipcore) 在推理路径上使用无级别 printk，会把大量日志灌进 dmesg。
+# 这里用「控制台级别」抑制：只把 console 上的显示压到 err，dmesg 环形缓冲仍保留全部日志。
+#   kernel.printk = <console_loglevel> <default_message_loglevel> <min> <max>
+# 撤销：删除 /etc/sysctl.d/99-npu-quiet.conf 后 `sudo sysctl --system`
+QUIET=/etc/sysctl.d/99-npu-quiet.conf
+cat > "$QUIET" <<'EOF_SYSCTL'
+# NPU (vipcore) 日志降噪：控制台只显示 err 及以上；dmesg 缓冲不受影响，排障时仍可 dmesg 查看。
+# 由 npu/install-npu.sh 写入，撤销即删除本文件并执行 sudo sysctl --system
+kernel.printk = 3 4 1 3
+EOF_SYSCTL
+sysctl --system >/dev/null 2>&1 && echo "  [OK] 已应用 $QUIET（console 级别=3）" || echo "  [WARN] 写入成功但 sysctl 应用失败，可稍后手动 sysctl --system"
+echo "  [i]  治本方案（需重编内核，可选）：把 vipcore 的无级别 printk 改为 dev_dbg()，"
+echo "       并在内核打开 CONFIG_DYNAMIC_DEBUG；之后默认完全静默，需要时按需打开："
+echo "         echo 'module vipcore +p' | sudo tee /sys/kernel/debug/dynamic_debug/control"
+echo "         echo 'module vipcore -p' | sudo tee /sys/kernel/debug/dynamic_debug/control   # 关闭"
 
 echo "=============================================="
 if [ "$FAIL" = "0" ]; then
